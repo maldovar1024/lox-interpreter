@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["lox_parser"]
+members = ["lox_parser", "lox_interpreter"]
