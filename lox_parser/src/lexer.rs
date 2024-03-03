@@ -1,7 +1,7 @@
 use std::{char, str::Chars};
 
 use crate::{
-    position::{self, Position},
+    position::Position,
     token::{Literal, Token, TokenType, KEY_WORDS_MAP},
 };
 
@@ -108,7 +108,7 @@ impl<'a> Lexer<'a> {
             '"' => TokenType::Literal(Literal::String(self.string())),
             '0'..='9' => TokenType::Literal(Literal::Number(self.number())),
             c if is_ident_start(c) => self.identifier(),
-            _ => todo!(),
+            c => TokenType::Unknown(c),
         };
 
         Some(self.yield_token(token_type, start))

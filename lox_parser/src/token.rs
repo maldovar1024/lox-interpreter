@@ -43,13 +43,13 @@ keywords!(
     ("while", While)
 );
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Literal {
     String(String),
     Number(f64),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum TokenType {
     Bang,
     BangEqual,
@@ -74,6 +74,39 @@ pub(crate) enum TokenType {
     Semicolon,
     Slash,
     Star,
+    Unknown(char),
+}
+
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TokenType::Bang => write!(f, "!"),
+            TokenType::BangEqual => write!(f, "!="),
+            TokenType::Comma => write!(f, ","),
+            TokenType::Dot => write!(f, "."),
+            TokenType::Eof => write!(f, "end of input"),
+            TokenType::Equal => write!(f, "="),
+            TokenType::EqualEqual => write!(f, "=="),
+            TokenType::Greater => write!(f, ">"),
+            TokenType::GreaterEqual => write!(f, ">="),
+            TokenType::Identifier(ident) => write!(f, "{ident}"),
+            TokenType::Keyword(kw) => write!(f, "{kw}"),
+            TokenType::LeftBrace => write!(f, "{{"),
+            TokenType::LeftParen => write!(f, "("),
+            TokenType::Less => write!(f, "<"),
+            TokenType::LessEqual => write!(f, "<="),
+            TokenType::Literal(Literal::String(s)) => write!(f, "{s}"),
+            TokenType::Literal(Literal::Number(n)) => write!(f, "{n}"),
+            TokenType::Minus => write!(f, "-"),
+            TokenType::Plus => write!(f, "+"),
+            TokenType::RightBrace => write!(f, "}}"),
+            TokenType::RightParen => write!(f, ")"),
+            TokenType::Semicolon => write!(f, ";"),
+            TokenType::Slash => write!(f, "/"),
+            TokenType::Star => write!(f, "*"),
+            TokenType::Unknown(c) => write!(f, "{c}"),
+        }
+    }
 }
 
 #[derive(Debug)]
