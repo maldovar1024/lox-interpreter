@@ -1,9 +1,18 @@
 use lox_parser::ast::{
-    expr::{self, BinaryExpr, BinaryOp},
+    expr::{self, BinaryExpr, BinaryOp, UnaryExpr, UnaryOp, Value},
     visit::{walk_expr, Visitor},
 };
 
-use crate::{error::IResult, value::Value};
+use crate::error::{IResult, RuntimeError};
+
+macro_rules! get_number {
+    ($value: expr) => {
+        match $value {
+            Value::Number(n) => n,
+            v => return Err(RuntimeError::type_error("number", &v)),
+        }
+    };
+}
 
 pub struct Interpreter {}
 
@@ -19,24 +28,28 @@ impl Visitor for Interpreter {
         let right = walk_expr(self, &binary.right)?;
 
         Ok(match binary.operator {
-            BinaryOp::Plus => match left.get_number() {
-                Ok(left) => (left + right.get_number()?).into(),
-                _ => (left.get_string()? + &right.get_string()?).into(),
+            BinaryOp::Plus => match (left, right) {
+                (Value::Number(n1), Value::Number(n2)) => (n1 + n2).into(),
+                (Value::String(s1), v2) => (s1 + &v2.to_string()).into(),
+                (v1, Value::String(s2)) => (v1.to_string() + &s2).into(),
+                (Value::Number(_), v) | (v, Value::Number(_)) | (v, _) => {
+                    return Err(RuntimeError::type_error("number or string", &v))
+                }
             },
-            BinaryOp::Minus => (left.get_number()? - right.get_number()?).into(),
-            BinaryOp::Multiply => (left.get_number()? * right.get_number()?).into(),
-            BinaryOp::Divide => (left.get_number()? / right.get_number()?).into(),
+            BinaryOp::Minus => (get_number!(left) - get_number!(right)).into(),
+            BinaryOp::Multiply => (get_number!(left) * get_number!(right)).into(),
+            BinaryOp::Divide => (get_number!(left) / get_number!(right)).into(),
             BinaryOp::Equal => (left == right).into(),
             BinaryOp::NotEqual => (left != right).into(),
             _ => todo!(),
         })
     }
 
-    fn visit_unary(&mut self, unary: &expr::UnaryExpr) -> Self::Result {
+    fn visit_unary(&mut self, unary: &UnaryExpr) -> Self::Result {
         let operand = walk_expr(self, &unary.operand)?;
         Ok(match unary.operator {
-            expr::UnaryOp::Negative => (-operand.get_number()?).into(),
-            expr::UnaryOp::Not => (!operand.as_bool()).into(),
+            UnaryOp::Negative => (-get_number!(operand)).into(),
+            UnaryOp::Not => (!operand.as_bool()).into(),
         })
     }
 }

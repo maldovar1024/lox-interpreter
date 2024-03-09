@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     error::{PResult, ParserError},
     token::{Keyword, Token, TokenType},
@@ -131,6 +133,35 @@ impl Value {
             Value::String(_) => "string",
             Value::Bool(_) => "bool",
             Value::Nil => "nil",
+        }
+    }
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Self::Number(value)
+    }
+}
+
+impl From<String> for Value {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Number(n) => write!(f, "{n}"),
+            Value::String(s) => write!(f, "{s}"),
+            Value::Bool(b) => write!(f, "{b}"),
+            Value::Nil => write!(f, "nil"),
         }
     }
 }
