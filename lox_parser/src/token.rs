@@ -4,7 +4,7 @@ use crate::position::Position;
 use phf::phf_map;
 
 macro_rules! keywords {
-    ($(($expr: expr, $name: ident)),+) => {
+    ($($expr: expr => $name: ident),+) => {
         #[derive(Debug, Clone, Copy)]
         pub(crate) enum Keyword {
             $($name,)+
@@ -25,22 +25,22 @@ macro_rules! keywords {
 }
 
 keywords!(
-    ("and", And),
-    ("class", Class),
-    ("else", Else),
-    ("false", False),
-    ("for", For),
-    ("fun", Fun),
-    ("if", If),
-    ("nil", Nil),
-    ("or", Or),
-    ("print", Print),
-    ("return", Return),
-    ("super", Super),
-    ("this", This),
-    ("true", True),
-    ("var", Var),
-    ("while", While)
+    "and" => And,
+    "class" => Class,
+    "else" => Else,
+    "false" => False,
+    "for" => For,
+    "fun" => Fun,
+    "if" => If,
+    "nil" => Nil,
+    "or" => Or,
+    "print" => Print,
+    "return" => Return,
+    "super" => Super,
+    "this" => This,
+    "true" => True,
+    "var" => Var,
+    "while" => While
 );
 
 #[derive(Debug, Clone)]
