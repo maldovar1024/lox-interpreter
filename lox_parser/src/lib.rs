@@ -8,6 +8,7 @@ pub mod lexer;
 pub mod parser;
 pub mod position;
 pub mod token;
+mod precedence;
 
 pub fn parse(src: &str) -> Option<Expr> {
     let mut parser = Parser::new(Lexer::new(src));
