@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 lox_parser = { path = "../lox_parser" }
+thiserror = "1.0.57"
