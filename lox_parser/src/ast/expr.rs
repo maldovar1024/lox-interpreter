@@ -46,9 +46,9 @@ impl BinaryOp {
 
 #[derive(Debug)]
 pub struct BinaryExpr {
-    operator: BinaryOp,
-    left: Box<Expr>,
-    right: Box<Expr>,
+    pub operator: BinaryOp,
+    pub left: Box<Expr>,
+    pub right: Box<Expr>,
 }
 
 #[derive(Debug)]
@@ -69,13 +69,13 @@ impl UnaryOp {
 
 #[derive(Debug)]
 pub struct UnaryExpr {
-    operator: UnaryOp,
-    operand: Box<Expr>,
+    pub operator: UnaryOp,
+    pub operand: Box<Expr>,
 }
 
 #[derive(Debug)]
 pub struct Group {
-    expr: Box<Expr>,
+    pub expr: Box<Expr>,
 }
 
 #[derive(Debug)]
@@ -107,10 +107,30 @@ impl Expr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(f64),
     String(String),
     Bool(bool),
     Nil,
+}
+
+impl Value {
+    pub fn as_bool(&self) -> bool {
+        match self {
+            Value::Number(num) => *num != 0.0,
+            Value::String(s) => s != "",
+            Value::Bool(b) => *b,
+            Value::Nil => false,
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Value::Number(_) => "number",
+            Value::String(_) => "string",
+            Value::Bool(_) => "bool",
+            Value::Nil => "nil",
+        }
+    }
 }
