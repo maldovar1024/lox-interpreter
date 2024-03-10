@@ -41,22 +41,13 @@ impl<'a> Lexer<'a> {
     }
 
     pub(crate) fn next_token(&mut self) -> Token {
-        loop {
-            match self.advance() {
-                Some(token) => return token,
-                None => {}
-            }
-        }
-    }
-
-    fn advance(&mut self) -> Option<Token> {
-        self.skip_whitespace();
+        self.skip();
         self.update_byte_pos();
         let start = self.current_position.clone();
 
         let first_char = match self.bump() {
             Some(c) => c,
-            None => return Some(self.yield_token(TokenType::Eof, start)),
+            None => return self.yield_token(TokenType::Eof, start),
         };
 
         let token_type = match first_char {
@@ -98,20 +89,14 @@ impl<'a> Lexer<'a> {
             '-' => TokenType::Minus,
             '*' => TokenType::Star,
             ';' => TokenType::Semicolon,
-            '/' => {
-                if self.test_and_bump('/') {
-                    self.skip_white(|c| c != '\n' && c != '\r');
-                    return None;
-                }
-                TokenType::Slash
-            }
+            '/' => TokenType::Slash,
             '"' => TokenType::Literal(Literal::String(self.string())),
             '0'..='9' => TokenType::Literal(Literal::Number(self.number())),
             c if is_ident_start(c) => self.identifier(),
             c => TokenType::Unknown(c),
         };
 
-        Some(self.yield_token(token_type, start))
+        self.yield_token(token_type, start)
     }
 
     fn yield_token(&self, token_type: TokenType, position: Position) -> Token {
@@ -166,8 +151,22 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn skip_whitespace(&mut self) {
-        self.skip_white(is_whitespace);
+    fn skip(&mut self) {
+        loop {
+            match self.peek() {
+                '/' => {
+                    if self.peek_next() == '/' {
+                        self.skip_white(|c| c != '\n' && c != '\r');
+                    } else {
+                        return;
+                    }
+                }
+                c if is_whitespace(c) => {
+                    self.bump();
+                }
+                _ => return,
+            }
+        }
     }
 
     fn is_eof(&self) -> bool {
