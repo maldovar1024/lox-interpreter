@@ -6,7 +6,7 @@ use phf::phf_map;
 macro_rules! keywords {
     ($($expr: expr => $name: ident),+) => {
         #[derive(Debug, Clone, Copy)]
-        pub(crate) enum Keyword {
+        pub enum Keyword {
             $($name,)+
         }
 
@@ -44,13 +44,13 @@ keywords!(
 );
 
 #[derive(Debug, Clone)]
-pub(crate) enum Literal {
+pub enum Literal {
     String(String),
     Number(f64),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum TokenType {
+pub enum TokenType {
     Bang,
     BangEqual,
     Comma,

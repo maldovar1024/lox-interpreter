@@ -23,7 +23,7 @@ fn is_digit(c: char) -> bool {
     matches!(c, '0'..='9')
 }
 
-pub(crate) struct Lexer<'a> {
+pub struct Lexer<'a> {
     chars: Chars<'a>,
     src: &'a str,
     current_position: Position,
