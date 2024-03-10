@@ -1,10 +1,11 @@
-use lox_parser::ast::expr::Value;
+use lox_parser::{ast::expr::Value, span::Span};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {
     #[error("TypeError: expected `{expected}`, found `{found}")]
     TypeError {
+        span: Span,
         expected: &'static str,
         found: &'static str,
     },
@@ -17,8 +18,9 @@ impl RuntimeError {
         Box::new(self)
     }
 
-    pub fn type_error(expected: &'static str, found: &Value) -> Box<RuntimeError> {
+    pub fn type_error(span: &Span, expected: &'static str, found: &Value) -> Box<RuntimeError> {
         RuntimeError::TypeError {
+            span: span.clone(),
             expected,
             found: found.type_name(),
         }
