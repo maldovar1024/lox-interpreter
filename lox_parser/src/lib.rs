@@ -1,4 +1,5 @@
 use ast::expr::Expr;
+use error::PResult;
 use lexer::Lexer;
 use parser::Parser;
 
@@ -7,10 +8,10 @@ pub mod error;
 pub mod lexer;
 pub mod parser;
 pub mod position;
-pub mod token;
 mod precedence;
+pub mod token;
 
-pub fn parse(src: &str) -> Option<Expr> {
+pub fn parse(src: &str) -> PResult<Expr> {
     let mut parser = Parser::new(Lexer::new(src));
     parser.parse()
 }

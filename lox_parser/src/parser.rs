@@ -26,8 +26,8 @@ impl<'a> Parser<'a> {
         Self { lexer, token: None }
     }
 
-    pub fn parse(&mut self) -> Option<Expr> {
-        self.expression().ok()
+    pub fn parse(&mut self) -> PResult<Expr> {
+        self.expression()
     }
 
     pub(crate) fn bump(&mut self) {

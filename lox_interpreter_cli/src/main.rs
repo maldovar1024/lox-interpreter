@@ -7,11 +7,11 @@ use std::{
 
 fn run(src: &str) {
     match lox_parser::parse(&src) {
-        Some(ast) => {
+        Ok(ast) => {
             println!("{ast:?}");
             println!("{:?}", interpret(&ast));
         }
-        None => println!("ERROR!"),
+        Err(e) => eprintln!("{e}"),
     }
 }
 
