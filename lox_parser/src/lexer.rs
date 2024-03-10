@@ -133,7 +133,8 @@ impl<'a> Lexer<'a> {
         let mut next = self.chars.next()?;
         match next {
             '\n' => self.new_line(),
-            '\r' if self.test_and_bump('\n') => {
+            '\r' if self.peek() == '\n' => {
+                self.chars.next();
                 self.new_line();
                 next = '\n'
             }
