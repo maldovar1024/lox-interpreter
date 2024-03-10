@@ -75,6 +75,7 @@ pub enum TokenType {
     Slash,
     Star,
     Unknown(char),
+    UnterminatedComment,
 }
 
 impl Display for TokenType {
@@ -105,6 +106,7 @@ impl Display for TokenType {
             TokenType::Slash => write!(f, "/"),
             TokenType::Star => write!(f, "*"),
             TokenType::Unknown(c) => write!(f, "{c}"),
+            TokenType::UnterminatedComment => write!(f, "unterminated comment"),
         }
     }
 }

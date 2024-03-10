@@ -41,7 +41,11 @@ impl<'a> Lexer<'a> {
     }
 
     pub(crate) fn next_token(&mut self) -> Token {
-        self.skip();
+        match self.skip() {
+            Some(token) => return token,
+            None => {}
+        }
+
         self.update_byte_pos();
         let start = self.current_position.clone();
 
@@ -152,22 +156,54 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn skip(&mut self) {
+    fn skip(&mut self) -> Option<Token> {
         loop {
             match self.peek() {
                 '/' => {
                     if self.peek_next() == '/' {
                         self.skip_white(|c| c != '\n' && c != '\r');
+                    } else if self.peek_next() == '*' {
+                        let comments = self.skip_multiline_comment();
+                        if comments.is_some() {
+                            return comments;
+                        }
                     } else {
-                        return;
+                        return None;
                     }
                 }
                 c if is_whitespace(c) => {
                     self.bump();
                 }
-                _ => return,
+                _ => return None,
             }
         }
+    }
+
+    fn skip_multiline_comment(&mut self) -> Option<Token> {
+        let mut level = 1;
+        let start = self.current_position.clone();
+
+        self.bump();
+        self.bump();
+
+        while let Some(c) = self.bump() {
+            match c {
+                '/' if self.peek() == '*' => {
+                    level += 1;
+                    self.bump();
+                }
+                '*' if self.peek() == '/' => {
+                    level -= 1;
+                    self.bump();
+                    if level == 0 {
+                        return None;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        Some(self.yield_token(TokenType::UnterminatedComment, start))
     }
 
     fn is_eof(&self) -> bool {
