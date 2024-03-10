@@ -94,6 +94,8 @@ impl<'a> Lexer<'a> {
             '*' => TokenType::Star,
             ';' => TokenType::Semicolon,
             '/' => TokenType::Slash,
+            '?' => TokenType::Question,
+            ':' => TokenType::Colon,
             '"' => self.string(),
             '0'..='9' => TokenType::Literal(Literal::Number(self.number())),
             c if is_ident_start(c) => self.identifier(),

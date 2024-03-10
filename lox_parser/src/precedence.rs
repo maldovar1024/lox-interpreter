@@ -16,6 +16,7 @@ pub(crate) enum Operator {
     Or,
     Plus,
     Prefix,
+    Ternary,
 }
 
 #[derive(Debug, PartialEq)]
@@ -26,7 +27,10 @@ pub(crate) enum Fixity {
 
 impl Operator {
     fn fixity(self) -> Fixity {
-        Fixity::Left
+        match self {
+            Operator::Ternary => Fixity::Right,
+            _ => Fixity::Left,
+        }
     }
 
     fn precedence(self) -> u8 {
@@ -42,6 +46,7 @@ impl Operator {
             | Operator::Equal => 11,
             Operator::And => 10,
             Operator::Or => 9,
+            Operator::Ternary => 4,
             Operator::None => 0,
         }
     }
@@ -68,6 +73,7 @@ impl Operator {
             TokenType::Star => Operator::Multiply,
             TokenType::Keyword(Keyword::And) => Operator::And,
             TokenType::Keyword(Keyword::Or) => Operator::Or,
+            TokenType::Question => Operator::Ternary,
             _ => return None,
         })
     }

@@ -76,6 +76,13 @@ pub struct UnaryExpr {
 }
 
 #[derive(Debug)]
+pub struct Ternary {
+    pub condition: Box<Expr>,
+    pub truthy: Box<Expr>,
+    pub falsy: Box<Expr>,
+}
+
+#[derive(Debug)]
 pub struct Group {
     pub expr: Box<Expr>,
 }
@@ -84,6 +91,7 @@ pub struct Group {
 pub enum ExprInner {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
+    Ternary(Ternary),
     Group(Group),
     Literal(Value),
 }
@@ -119,6 +127,17 @@ impl Expr {
             expr: ExprInner::Unary(UnaryExpr {
                 operator,
                 operand: p(operand),
+            }),
+        }
+    }
+
+    pub(crate) fn ternary(condition: Self, truthy: Self, falsy: Self) -> Self {
+        Self {
+            span: condition.span.extends_with(&falsy.span),
+            expr: ExprInner::Ternary(Ternary {
+                condition: p(condition),
+                truthy: p(truthy),
+                falsy: p(falsy),
             }),
         }
     }

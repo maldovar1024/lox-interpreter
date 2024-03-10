@@ -50,15 +50,15 @@ impl Visitor for Interpreter {
                     ))
                 }
             },
-            BinaryOp::Minus => {
-                (get_number!(left, &binary.left.span) - get_number!(right, &binary.right.span)).into()
-            }
-            BinaryOp::Multiply => {
-                (get_number!(left, &binary.left.span) * get_number!(right, &binary.right.span)).into()
-            }
-            BinaryOp::Divide => {
-                (get_number!(left, &binary.left.span) / get_number!(right, &binary.right.span)).into()
-            }
+            BinaryOp::Minus => (get_number!(left, &binary.left.span)
+                - get_number!(right, &binary.right.span))
+            .into(),
+            BinaryOp::Multiply => (get_number!(left, &binary.left.span)
+                * get_number!(right, &binary.right.span))
+            .into(),
+            BinaryOp::Divide => (get_number!(left, &binary.left.span)
+                / get_number!(right, &binary.right.span))
+            .into(),
             BinaryOp::Equal => (left == right).into(),
             BinaryOp::NotEqual => (left != right).into(),
             _ => todo!(),
@@ -71,5 +71,14 @@ impl Visitor for Interpreter {
             UnaryOp::Negative => (-get_number!(operand, &unary.operand.span)).into(),
             UnaryOp::Not => (!operand.as_bool()).into(),
         })
+    }
+
+    fn visit_ternary(&mut self, ternary: &expr::Ternary) -> Self::Result {
+        let condition = walk_expr(self, &ternary.condition)?;
+        if condition.as_bool() {
+            walk_expr(self, &ternary.truthy)
+        } else {
+            walk_expr(self, &ternary.falsy)
+        }
     }
 }

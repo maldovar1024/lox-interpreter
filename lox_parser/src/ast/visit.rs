@@ -1,4 +1,4 @@
-use super::expr::{BinaryExpr, Expr, ExprInner, Group, UnaryExpr, Value};
+use super::expr::{BinaryExpr, Expr, ExprInner, Group, Ternary, UnaryExpr, Value};
 
 pub trait Visitor: Sized {
     type Result;
@@ -14,6 +14,9 @@ pub trait Visitor: Sized {
     fn visit_unary(&mut self, unary: &UnaryExpr) -> Self::Result {
         walk_unary(self, unary)
     }
+    fn visit_ternary(&mut self, ternary: &Ternary) -> Self::Result {
+        walk_ternary(self, ternary)
+    }
 
     fn visit_group(&mut self, group: &Group) -> Self::Result {
         walk_group(self, group)
@@ -28,6 +31,7 @@ pub fn walk_expr<V: Visitor>(visitor: &mut V, expr: &Expr) -> V::Result {
         ExprInner::Unary(unary) => visitor.visit_unary(unary),
         ExprInner::Group(group) => visitor.visit_group(group),
         ExprInner::Literal(value) => visitor.visit_literal(value),
+        ExprInner::Ternary(ternary) => visitor.visit_ternary(ternary),
     }
 }
 
@@ -38,6 +42,12 @@ pub fn walk_binary<V: Visitor>(visitor: &mut V, binary: &BinaryExpr) -> V::Resul
 
 pub fn walk_unary<V: Visitor>(visitor: &mut V, unary: &UnaryExpr) -> V::Result {
     visitor.visit_expr(&unary.operand)
+}
+
+pub fn walk_ternary<V: Visitor>(visitor: &mut V, ternary: &Ternary) -> V::Result {
+    visitor.visit_expr(&ternary.condition);
+    visitor.visit_expr(&ternary.truthy);
+    visitor.visit_expr(&ternary.falsy)
 }
 
 pub fn walk_group<V: Visitor>(visitor: &mut V, group: &Group) -> V::Result {

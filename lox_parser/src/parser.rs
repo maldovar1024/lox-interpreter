@@ -119,11 +119,18 @@ impl<'a> Parser<'a> {
         loop {
             match Operator::from_token(&self.look_ahead()) {
                 Some(next_op) if next_op.is_precedent_than(op) => {
-                    expr = Expr::binary(
-                        self.next_token().token_type.into(),
-                        expr,
-                        self.expr_precedence(next_op)?,
-                    )
+                    if matches!(next_op, Operator::Ternary) {
+                        self.bump();
+                        let truthy = self.expression()?;
+                        eat!(self, TokenType::Colon);
+                        expr = Expr::ternary(expr, truthy, self.expr_precedence(next_op)?)
+                    } else {
+                        expr = Expr::binary(
+                            self.next_token().token_type.into(),
+                            expr,
+                            self.expr_precedence(next_op)?,
+                        )
+                    }
                 }
                 _ => break,
             }

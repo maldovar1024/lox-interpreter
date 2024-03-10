@@ -53,6 +53,7 @@ pub enum Literal {
 pub enum TokenType {
     Bang,
     BangEqual,
+    Colon,
     Comma,
     Dot,
     Eof,
@@ -69,6 +70,7 @@ pub enum TokenType {
     Literal(Literal),
     Minus,
     Plus,
+    Question,
     RightBrace,
     RightParen,
     Semicolon,
@@ -84,6 +86,7 @@ impl Display for TokenType {
         match self {
             TokenType::Bang => write!(f, "!"),
             TokenType::BangEqual => write!(f, "!="),
+            TokenType::Colon => write!(f, ":"),
             TokenType::Comma => write!(f, ","),
             TokenType::Dot => write!(f, "."),
             TokenType::Eof => write!(f, "end of input"),
@@ -101,6 +104,7 @@ impl Display for TokenType {
             TokenType::Literal(Literal::Number(n)) => write!(f, "{n}"),
             TokenType::Minus => write!(f, "-"),
             TokenType::Plus => write!(f, "+"),
+            TokenType::Question => write!(f, "?"),
             TokenType::RightBrace => write!(f, "}}"),
             TokenType::RightParen => write!(f, ")"),
             TokenType::Semicolon => write!(f, ";"),
