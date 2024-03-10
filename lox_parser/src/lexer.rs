@@ -1,7 +1,7 @@
 use std::{char, str::Chars};
 
 use crate::{
-    position::Position,
+    span::{Position, Span},
     token::{Literal, Token, TokenType, KEY_WORDS_MAP},
 };
 
@@ -103,10 +103,13 @@ impl<'a> Lexer<'a> {
         self.yield_token(token_type, start)
     }
 
-    fn yield_token(&self, token_type: TokenType, position: Position) -> Token {
+    fn yield_token(&self, token_type: TokenType, start: Position) -> Token {
         Token {
             token_type,
-            position,
+            span: Span {
+                start,
+                end: self.current_position.clone(),
+            },
         }
     }
 

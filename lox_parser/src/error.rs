@@ -1,16 +1,16 @@
 use thiserror::Error;
 
-use crate::{position::Position, token::TokenType};
+use crate::{span::Span, token::TokenType};
 
 #[derive(Debug, Error)]
 pub enum ParserError {
     #[error("{1}: unexpected token `{0}`")]
-    UnexpectedToken(TokenType, Position),
-    #[error("{pos}: expect {expected}, found `{found}`")]
+    UnexpectedToken(TokenType, Span),
+    #[error("{span}: expect {expected}, found `{found}`")]
     ExpectStructure {
         expected: &'static str,
-        pos: Position,
         found: TokenType,
+        span: Span,
     },
 }
 

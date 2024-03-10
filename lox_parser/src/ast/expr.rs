@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
 use crate::{
-    error::{PResult, ParserError},
-    token::{Keyword, Token, TokenType},
+    span::{Position, Span},
+    token::{Keyword, TokenType},
 };
 
 #[inline(always)]
@@ -26,9 +26,9 @@ pub enum BinaryOp {
     Plus,
 }
 
-impl BinaryOp {
-    pub(crate) fn from_token(token: Token) -> PResult<Self> {
-        Ok(match token.token_type {
+impl From<TokenType> for BinaryOp {
+    fn from(token_type: TokenType) -> Self {
+        match token_type {
             TokenType::BangEqual => Self::NotEqual,
             TokenType::EqualEqual => Self::Equal,
             TokenType::Greater => Self::Greater,
@@ -41,8 +41,8 @@ impl BinaryOp {
             TokenType::Plus => Self::Plus,
             TokenType::Slash => Self::Divide,
             TokenType::Star => Self::Multiply,
-            t => return Err(p(ParserError::UnexpectedToken(t, token.position))),
-        })
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -59,13 +59,13 @@ pub enum UnaryOp {
     Not,
 }
 
-impl UnaryOp {
-    pub(crate) fn from_token(token: Token) -> PResult<Self> {
-        Ok(match token.token_type {
+impl From<TokenType> for UnaryOp {
+    fn from(token_type: TokenType) -> Self {
+        match token_type {
             TokenType::Bang => Self::Not,
             TokenType::Minus => Self::Negative,
-            t => return Err(Box::new(ParserError::UnexpectedToken(t, token.position))),
-        })
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -81,31 +81,53 @@ pub struct Group {
 }
 
 #[derive(Debug)]
-pub enum Expr {
+pub enum ExprInner {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     Group(Group),
     Literal(Value),
 }
 
+#[derive(Debug)]
+pub struct Expr {
+    pub expr: ExprInner,
+    pub span: Span,
+}
+
 impl Expr {
-    pub(crate) fn group(expr: Expr) -> Expr {
-        Expr::Group(Group { expr: p(expr) })
+    pub(crate) fn group(expr: Self, start: Position, end: Position) -> Self {
+        Self {
+            expr: ExprInner::Group(Group { expr: p(expr) }),
+            span: Span { start, end },
+        }
     }
 
-    pub(crate) fn binary(operator: BinaryOp, left: Expr, right: Expr) -> Expr {
-        Expr::Binary(BinaryExpr {
-            operator,
-            left: p(left),
-            right: p(right),
-        })
+    pub(crate) fn binary(operator: BinaryOp, left: Self, right: Self) -> Self {
+        Self {
+            span: left.span.extends_with(&right.span),
+            expr: ExprInner::Binary(BinaryExpr {
+                operator,
+                left: p(left),
+                right: p(right),
+            }),
+        }
     }
 
-    pub(crate) fn unary(operator: UnaryOp, operand: Expr) -> Expr {
-        Expr::Unary(UnaryExpr {
-            operator,
-            operand: p(operand),
-        })
+    pub(crate) fn unary(operator: UnaryOp, op_span: Span, operand: Self) -> Self {
+        Self {
+            span: op_span.extends_with(&operand.span),
+            expr: ExprInner::Unary(UnaryExpr {
+                operator,
+                operand: p(operand),
+            }),
+        }
+    }
+
+    pub(crate) fn literal(value: Value, span: Span) -> Self {
+        Self {
+            expr: ExprInner::Literal(value),
+            span,
+        }
     }
 }
 

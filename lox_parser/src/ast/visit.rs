@@ -1,4 +1,4 @@
-use super::expr::{BinaryExpr, Expr, Group, UnaryExpr, Value};
+use super::expr::{BinaryExpr, Expr, ExprInner, Group, UnaryExpr, Value};
 
 pub trait Visitor: Sized {
     type Result;
@@ -23,11 +23,11 @@ pub trait Visitor: Sized {
 }
 
 pub fn walk_expr<V: Visitor>(visitor: &mut V, expr: &Expr) -> V::Result {
-    match expr {
-        Expr::Binary(binary) => visitor.visit_binary(binary),
-        Expr::Unary(unary) => visitor.visit_unary(unary),
-        Expr::Group(group) => visitor.visit_group(group),
-        Expr::Literal(value) => visitor.visit_literal(value),
+    match &expr.expr {
+        ExprInner::Binary(binary) => visitor.visit_binary(binary),
+        ExprInner::Unary(unary) => visitor.visit_unary(unary),
+        ExprInner::Group(group) => visitor.visit_group(group),
+        ExprInner::Literal(value) => visitor.visit_literal(value),
     }
 }
 

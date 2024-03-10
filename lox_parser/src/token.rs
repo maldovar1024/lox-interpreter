@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::position::Position;
+use crate::span::Span;
 use phf::phf_map;
 
 macro_rules! keywords {
@@ -114,5 +114,5 @@ impl Display for TokenType {
 #[derive(Debug)]
 pub(crate) struct Token {
     pub(crate) token_type: TokenType,
-    pub(crate) position: Position,
+    pub(crate) span: Span,
 }
