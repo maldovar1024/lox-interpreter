@@ -94,7 +94,7 @@ impl<'a> Lexer<'a> {
             '*' => TokenType::Star,
             ';' => TokenType::Semicolon,
             '/' => TokenType::Slash,
-            '"' => TokenType::Literal(Literal::String(self.string())),
+            '"' => self.string(),
             '0'..='9' => TokenType::Literal(Literal::Number(self.number())),
             c if is_ident_start(c) => self.identifier(),
             c => TokenType::Unknown(c),
@@ -219,27 +219,24 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn string(&mut self) -> String {
+    fn string(&mut self) -> TokenType {
         let mut result = String::new();
-        loop {
-            match self.peek() {
-                '\\' => {
-                    self.bump();
-                    match self.peek() {
-                        '\\' => result.push('\\'),
-                        'n' => result.push('\n'),
-                        'r' => result.push('\r'),
-                        't' => result.push('\t'),
-                        '"' => result.push('"'),
-                        _ => todo!(),
-                    }
-                }
-                '"' => break,
+        while let Some(c) = self.bump() {
+            match c {
+                '\\' => match self.bump().unwrap_or(EOF_CHAR) {
+                    '\\' => result.push('\\'),
+                    'n' => result.push('\n'),
+                    'r' => result.push('\r'),
+                    't' => result.push('\t'),
+                    '"' => result.push('"'),
+                    _ => todo!(),
+                },
+                '"' => return TokenType::Literal(Literal::String(result)),
                 ch => result.push(ch),
             }
-            self.bump();
         }
-        result
+
+        TokenType::UnterminatedString
     }
 
     fn identifier(&mut self) -> TokenType {
