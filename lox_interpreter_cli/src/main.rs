@@ -1,8 +1,21 @@
 use lox_interpreter::interpret;
 use lox_parser;
-use std::io::{self, Write};
+use std::{
+    env, fs,
+    io::{self, Write},
+};
 
-fn main() {
+fn run(src: &str) {
+    match lox_parser::parse(&src) {
+        Some(ast) => {
+            println!("{ast:?}");
+            println!("{:?}", interpret(&ast));
+        }
+        None => println!("ERROR!"),
+    }
+}
+
+fn run_interactively() {
     loop {
         print!(">");
         io::stdout().flush().unwrap();
@@ -13,12 +26,21 @@ fn main() {
             return;
         }
 
-        match lox_parser::parse(&content) {
-            Some(ast) => {
-                println!("{ast:?}");
-                println!("{:?}", interpret(&ast));
-            }
-            None => println!("ERROR!"),
-        }
+        run(&content);
+    }
+}
+
+fn run_from_file(file_path: &str) {
+    let content = fs::read_to_string(file_path).expect(&format!("Cannot read file `{file_path}`"));
+    run(&content);
+}
+
+fn main() {
+    let args: Vec<_> = env::args().collect();
+
+    if args.len() == 1 {
+        run_interactively();
+    } else {
+        run_from_file(&args[1]);
     }
 }
