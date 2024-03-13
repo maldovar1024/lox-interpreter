@@ -1,6 +1,10 @@
-use lox_parser::ast::{
-    expr::{self, BinaryExpr, BinaryOp, UnaryExpr, UnaryOp, Value},
-    visit::{walk_expr, Visitor},
+use lox_parser::{
+    ast::{
+        expr::{self, BinaryExpr, BinaryOp, UnaryExpr, UnaryOp, Value},
+        stmt::Print,
+        visit::{walk_expr, Visitor},
+    },
+    parser::Ast,
 };
 
 use crate::error::{IResult, RuntimeError};
@@ -16,8 +20,22 @@ macro_rules! get_number {
 
 pub struct Interpreter {}
 
+impl Interpreter {
+    pub fn interpret(&mut self, ast: &Ast) -> IResult<Value> {
+        for stmt in ast {
+            self.visit_stmt(stmt)?;
+        }
+        Ok(Value::Nil)
+    }
+}
+
 impl Visitor for Interpreter {
     type Result = IResult<Value>;
+
+    fn visit_print(&mut self, print: &Print) -> Self::Result {
+        println!("{}", walk_expr(self, &print.expr)?);
+        Ok(Value::Nil)
+    }
 
     fn visit_literal(&mut self, literal: &expr::Value) -> Self::Result {
         Ok(literal.clone().into())

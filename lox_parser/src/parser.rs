@@ -1,5 +1,8 @@
 use crate::{
-    ast::expr::{p, Expr, Value},
+    ast::{
+        expr::{p, Expr, Value},
+        stmt::{Expression, Print, Statement},
+    },
     error::{PResult, ParserError},
     lexer::Lexer,
     precedence::Operator,
@@ -22,13 +25,19 @@ macro_rules! eat {
     }};
 }
 
+pub type Ast = Vec<Statement>;
+
 impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Self {
         Self { lexer, token: None }
     }
 
-    pub fn parse(&mut self) -> PResult<Expr> {
-        self.expression()
+    pub fn parse(&mut self) -> PResult<Ast> {
+        let mut statements = vec![];
+        while !matches!(self.look_ahead(), TokenType::Eof) {
+            statements.push(self.statement()?);
+        }
+        Ok(statements)
     }
 
     pub(crate) fn bump(&mut self) {
@@ -71,6 +80,30 @@ impl<'a> Parser<'a> {
                 _ => self.bump(),
             }
         }
+    }
+
+    fn statement(&mut self) -> PResult<Statement> {
+        match self.look_ahead() {
+            TokenType::Keyword(Keyword::Print) => self.print_statement(),
+            _ => self.expression_statement(),
+        }
+    }
+
+    fn print_statement(&mut self) -> PResult<Statement> {
+        self.bump();
+        let expr = Statement::Print(Print {
+            expr: self.expression()?,
+        });
+        eat!(self, TokenType::Semicolon);
+        Ok(expr)
+    }
+
+    fn expression_statement(&mut self) -> PResult<Statement> {
+        let expr = Statement::Expression(Expression {
+            expr: self.expression()?,
+        });
+        eat!(self, TokenType::Semicolon);
+        Ok(expr)
     }
 
     fn expression(&mut self) -> PResult<Expr> {

@@ -1,7 +1,22 @@
-use super::expr::{BinaryExpr, Expr, ExprInner, Group, Ternary, UnaryExpr, Value};
+use super::{
+    expr::{BinaryExpr, Expr, ExprInner, Group, Ternary, UnaryExpr, Value},
+    stmt::{Expression, Print, Statement},
+};
 
 pub trait Visitor: Sized {
     type Result;
+
+    fn visit_stmt(&mut self, stmt: &Statement) -> Self::Result {
+        walk_stmt(self, stmt)
+    }
+
+    fn visit_print(&mut self, print: &Print) -> Self::Result {
+        walk_print(self, print)
+    }
+
+    fn visit_expression(&mut self, expression: &Expression) -> Self::Result {
+        walk_expression(self, expression)
+    }
 
     fn visit_expr(&mut self, expr: &Expr) -> Self::Result {
         walk_expr(self, expr)
@@ -23,6 +38,21 @@ pub trait Visitor: Sized {
     }
 
     fn visit_literal(&mut self, literal: &Value) -> Self::Result;
+}
+
+pub fn walk_stmt<V: Visitor>(visitor: &mut V, stmt: &Statement) -> V::Result {
+    match stmt {
+        Statement::Print(p) => visitor.visit_print(p),
+        Statement::Expression(e) => visitor.visit_expression(e),
+    }
+}
+
+pub fn walk_print<V: Visitor>(visitor: &mut V, print: &Print) -> V::Result {
+    visitor.visit_expr(&print.expr)
+}
+
+pub fn walk_expression<V: Visitor>(visitor: &mut V, expression: &Expression) -> V::Result {
+    visitor.visit_expr(&expression.expr)
 }
 
 pub fn walk_expr<V: Visitor>(visitor: &mut V, expr: &Expr) -> V::Result {

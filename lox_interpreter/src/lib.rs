@@ -1,10 +1,10 @@
 use error::IResult;
 use interpreter::Interpreter;
-use lox_parser::ast::{expr::{Expr, Value}, visit::Visitor};
+use lox_parser::{ast::expr::Value, parser::Ast};
 
-mod interpreter;
 pub mod error;
+mod interpreter;
 
-pub fn interpret(expr: &Expr) -> IResult<Value> {
-    (Interpreter {}).visit_expr(expr)
+pub fn interpret(ast: &Ast) -> IResult<Value> {
+    (Interpreter {}).interpret(ast)
 }
