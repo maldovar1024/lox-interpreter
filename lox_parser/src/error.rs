@@ -14,4 +14,18 @@ pub enum ParserError {
     },
 }
 
+impl ParserError {
+    pub(crate) fn expect_structure(
+        expected: &'static str,
+        found: TokenType,
+        span: Span,
+    ) -> Box<Self> {
+        Box::new(Self::ExpectStructure {
+            expected,
+            found,
+            span,
+        })
+    }
+}
+
 pub type PResult<T> = Result<T, Box<ParserError>>;

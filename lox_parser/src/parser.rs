@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expr::{p, Expr, Value},
-        stmt::{Expression, Print, Statement},
+        stmt::{Expression, Print, Statement, VarDecl},
     },
     error::{PResult, ParserError},
     lexer::Lexer,
@@ -25,6 +25,12 @@ macro_rules! eat {
     }};
 }
 
+macro_rules! match_keyword {
+    ($self: expr, $kw: pat) => {
+        matches!($self.look_ahead(), TokenType::Keyword($kw))
+    };
+}
+
 pub type Ast = Vec<Statement>;
 
 impl<'a> Parser<'a> {
@@ -35,7 +41,7 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> PResult<Ast> {
         let mut statements = vec![];
         while !matches!(self.look_ahead(), TokenType::Eof) {
-            statements.push(self.statement()?);
+            statements.push(self.declaration()?);
         }
         Ok(statements)
     }
@@ -82,6 +88,39 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn declaration(&mut self) -> PResult<Statement> {
+        if match_keyword!(self, Keyword::Var) {
+            return self.var_decl();
+        }
+        self.statement()
+    }
+
+    fn var_decl(&mut self) -> PResult<Statement> {
+        self.bump();
+        let next_token = self.next_token();
+        let ident = match next_token.token_type {
+            TokenType::Identifier(ident) => ident,
+            t => {
+                return Err(ParserError::expect_structure(
+                    "identifier",
+                    t,
+                    next_token.span,
+                ))
+            }
+        };
+
+        let initializer = if matches!(self.look_ahead(), TokenType::Equal) {
+            self.bump();
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        eat!(self, TokenType::Semicolon);
+
+        Ok(Statement::Var(VarDecl { ident, initializer }))
+    }
+
     fn statement(&mut self) -> PResult<Statement> {
         match self.look_ahead() {
             TokenType::Keyword(Keyword::Print) => self.print_statement(),
@@ -91,19 +130,19 @@ impl<'a> Parser<'a> {
 
     fn print_statement(&mut self) -> PResult<Statement> {
         self.bump();
-        let expr = Statement::Print(Print {
+        let stmt = Statement::Print(Print {
             expr: self.expression()?,
         });
         eat!(self, TokenType::Semicolon);
-        Ok(expr)
+        Ok(stmt)
     }
 
     fn expression_statement(&mut self) -> PResult<Statement> {
-        let expr = Statement::Expression(Expression {
+        let stmt = Statement::Expression(Expression {
             expr: self.expression()?,
         });
         eat!(self, TokenType::Semicolon);
-        Ok(expr)
+        Ok(stmt)
     }
 
     fn expression(&mut self) -> PResult<Expr> {
@@ -140,6 +179,7 @@ impl<'a> Parser<'a> {
                 next_token.span,
                 self.expr_precedence(Operator::Prefix)?,
             ),
+            TokenType::Identifier(ident) => Expr::var(ident, next_token.span),
             t => {
                 return Err(p(ParserError::ExpectStructure {
                     expected: "expression",

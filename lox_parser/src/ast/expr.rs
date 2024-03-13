@@ -94,6 +94,7 @@ pub enum ExprInner {
     Ternary(Ternary),
     Group(Group),
     Literal(Value),
+    Var(String),
 }
 
 #[derive(Debug)]
@@ -145,6 +146,13 @@ impl Expr {
     pub(crate) fn literal(value: Value, span: Span) -> Self {
         Self {
             expr: ExprInner::Literal(value),
+            span,
+        }
+    }
+
+    pub(crate) fn var(ident: String, span: Span) -> Self {
+        Self {
+            expr: ExprInner::Var(ident),
             span,
         }
     }

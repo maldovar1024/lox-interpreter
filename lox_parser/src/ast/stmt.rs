@@ -11,7 +11,14 @@ pub struct Expression {
 }
 
 #[derive(Debug)]
+pub struct VarDecl {
+    pub ident: String,
+    pub initializer: Option<Expr>,
+}
+
+#[derive(Debug)]
 pub enum Statement {
     Print(Print),
     Expression(Expression),
+    Var(VarDecl),
 }

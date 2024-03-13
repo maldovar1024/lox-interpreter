@@ -99,4 +99,12 @@ impl Visitor for Interpreter {
             walk_expr(self, &ternary.falsy)
         }
     }
+    
+    fn visit_var_decl(&mut self, var_decl: &lox_parser::ast::stmt::VarDecl) -> Self::Result {
+        todo!()
+    }
+    
+    fn visit_var(&mut self, var: &String) -> Self::Result {
+        todo!()
+    }
 }
