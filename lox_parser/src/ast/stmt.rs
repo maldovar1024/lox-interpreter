@@ -17,8 +17,14 @@ pub struct VarDecl {
 }
 
 #[derive(Debug)]
+pub struct Block {
+    pub statements: Box<[Statement]>,
+}
+
+#[derive(Debug)]
 pub enum Statement {
     Print(Print),
     Expression(Expression),
     Var(VarDecl),
+    Block(Block),
 }

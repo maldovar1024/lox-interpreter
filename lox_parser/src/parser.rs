@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expr::{p, Expr, Value},
-        stmt::{Expression, Print, Statement, VarDecl},
+        stmt::{Block, Expression, Print, Statement, VarDecl},
     },
     error::{PResult, ParserError},
     lexer::Lexer,
@@ -124,6 +124,7 @@ impl<'a> Parser<'a> {
     fn statement(&mut self) -> PResult<Statement> {
         match self.look_ahead() {
             TokenType::Keyword(Keyword::Print) => self.print_statement(),
+            TokenType::LeftBrace => self.block(),
             _ => self.expression_statement(),
         }
     }
@@ -143,6 +144,20 @@ impl<'a> Parser<'a> {
         });
         eat!(self, TokenType::Semicolon);
         Ok(stmt)
+    }
+
+    fn block(&mut self) -> PResult<Statement> {
+        self.bump();
+        let mut statements = vec![];
+        while !matches!(self.look_ahead(), TokenType::RightBrace) {
+            statements.push(self.declaration()?);
+        }
+
+        eat!(self, TokenType::RightBrace);
+
+        Ok(Statement::Block(Block {
+            statements: statements.into_boxed_slice(),
+        }))
     }
 
     fn expression(&mut self) -> PResult<Expr> {

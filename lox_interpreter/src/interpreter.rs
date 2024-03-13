@@ -1,8 +1,8 @@
 use lox_parser::{
     ast::{
         expr::{self, BinaryExpr, BinaryOp, ExprInner, UnaryExpr, UnaryOp, Value},
-        stmt::{Print, VarDecl},
-        visit::{walk_expr, Visitor},
+        stmt::{Block, Print, VarDecl},
+        visit::{walk_expr, walk_stmt, Visitor},
     },
     parser::Ast,
 };
@@ -58,6 +58,17 @@ impl Visitor for Interpreter {
     fn visit_print(&mut self, print: &Print) -> Self::Result {
         println!("{}", walk_expr(self, &print.expr)?);
         Ok(Value::Nil)
+    }
+
+    fn visit_block(&mut self, block: &Block) -> Self::Result {
+        self.env.start_scope();
+        let result = block
+            .statements
+            .iter()
+            .try_for_each(|stmt| walk_stmt(self, stmt).and(Ok(())));
+        self.env.end_scope();
+
+        result.and(Ok(Value::Nil))
     }
 
     fn visit_literal(&mut self, literal: &expr::Value) -> Self::Result {
