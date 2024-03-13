@@ -9,7 +9,9 @@ fn run(src: &str) {
     match lox_parser::parse(&src) {
         Ok(ast) => {
             println!("{ast:?}");
-            println!("{:?}", interpret(&ast));
+            if let Err(err) = interpret(&ast) {
+                println!("{err}");
+            }
         }
         Err(e) => eprintln!("{e}"),
     }
