@@ -3,6 +3,7 @@ use crate::token::{Keyword, TokenType};
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Operator {
     And,
+    Assign,
     Divide,
     Equal,
     Greater,
@@ -28,7 +29,7 @@ pub(crate) enum Fixity {
 impl Operator {
     fn fixity(self) -> Fixity {
         match self {
-            Operator::Ternary => Fixity::Right,
+            Operator::Ternary | Operator::Assign => Fixity::Right,
             _ => Fixity::Left,
         }
     }
@@ -47,6 +48,7 @@ impl Operator {
             Operator::And => 10,
             Operator::Or => 9,
             Operator::Ternary => 4,
+            Operator::Assign => 2,
             Operator::None => 0,
         }
     }
@@ -61,6 +63,7 @@ impl Operator {
 
     pub(crate) fn from_token(token_type: &TokenType) -> Option<Self> {
         Some(match token_type {
+            TokenType::Equal => Operator::Assign,
             TokenType::BangEqual => Operator::NotEqual,
             TokenType::EqualEqual => Operator::Equal,
             TokenType::Greater => Operator::Greater,

@@ -18,7 +18,7 @@ varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
 
-expression     → unary ( ( "!=" | "==" | ">" | ">=" | "<" | "<=" | "-" | "+" | "/" | "*" | "?" expression ":") unary )* ;
+expression     → unary ( ( "=" | "!=" | "==" | ">" | ">=" | "<" | "<=" | "-" | "+" | "/" | "*" | "?" expression ":") unary )* ;
 unary          → ( "!" | "-" ) unary
                | primary ;
 primary        → NUMBER | STRING | "true" | "false" | "nil"

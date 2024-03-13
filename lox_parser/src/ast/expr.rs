@@ -13,6 +13,7 @@ pub(crate) fn p<T>(x: T) -> Box<T> {
 #[derive(Debug)]
 pub enum BinaryOp {
     And,
+    Assign,
     Divide,
     Equal,
     Greater,
@@ -29,6 +30,7 @@ pub enum BinaryOp {
 impl From<TokenType> for BinaryOp {
     fn from(token_type: TokenType) -> Self {
         match token_type {
+            TokenType::Equal => Self::Assign,
             TokenType::BangEqual => Self::NotEqual,
             TokenType::EqualEqual => Self::Equal,
             TokenType::Greater => Self::Greater,

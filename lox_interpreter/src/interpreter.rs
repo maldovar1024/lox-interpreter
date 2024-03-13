@@ -1,13 +1,16 @@
 use lox_parser::{
     ast::{
-        expr::{self, BinaryExpr, BinaryOp, UnaryExpr, UnaryOp, Value},
-        stmt::Print,
+        expr::{self, BinaryExpr, BinaryOp, ExprInner, UnaryExpr, UnaryOp, Value},
+        stmt::{Print, VarDecl},
         visit::{walk_expr, Visitor},
     },
     parser::Ast,
 };
 
-use crate::error::{IResult, RuntimeError};
+use crate::{
+    environment::Environment,
+    error::{IResult, RuntimeError},
+};
 
 macro_rules! get_number {
     ($value: expr, $span: expr) => {
@@ -18,14 +21,34 @@ macro_rules! get_number {
     };
 }
 
-pub struct Interpreter {}
+pub struct Interpreter {
+    env: Environment,
+}
 
 impl Interpreter {
+    pub fn new() -> Self {
+        Self {
+            env: Environment::default(),
+        }
+    }
+
     pub fn interpret(&mut self, ast: &Ast) -> IResult<Value> {
         for stmt in ast {
             self.visit_stmt(stmt)?;
         }
         Ok(Value::Nil)
+    }
+
+    fn assign(&mut self, binary: &BinaryExpr) -> IResult<Value> {
+        assert!(matches!(binary.operator, BinaryOp::Assign));
+        let right = walk_expr(self, &binary.right)?;
+        match &binary.left.expr {
+            ExprInner::Var(var) => {
+                self.env.assign(&var, right.clone())?;
+                Ok(right)
+            }
+            _ => Err(RuntimeError::InvalidLeftValue(binary.left.span.to_owned()).to_box()),
+        }
     }
 }
 
@@ -42,6 +65,10 @@ impl Visitor for Interpreter {
     }
 
     fn visit_binary(&mut self, binary: &BinaryExpr) -> Self::Result {
+        if matches!(binary.operator, BinaryOp::Assign) {
+            return self.assign(binary);
+        }
+
         let left = walk_expr(self, &binary.left)?;
         let right = walk_expr(self, &binary.right)?;
 
@@ -99,12 +126,17 @@ impl Visitor for Interpreter {
             walk_expr(self, &ternary.falsy)
         }
     }
-    
-    fn visit_var_decl(&mut self, var_decl: &lox_parser::ast::stmt::VarDecl) -> Self::Result {
-        todo!()
+
+    fn visit_var_decl(&mut self, var_decl: &VarDecl) -> Self::Result {
+        let init = match &var_decl.initializer {
+            Some(expr) => walk_expr(self, expr)?,
+            None => Value::Nil,
+        };
+        self.env.define(&var_decl.ident, init);
+        Ok(Value::Nil)
     }
-    
+
     fn visit_var(&mut self, var: &String) -> Self::Result {
-        todo!()
+        self.env.get(&var)
     }
 }

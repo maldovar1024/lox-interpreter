@@ -9,6 +9,10 @@ pub enum RuntimeError {
         expected: &'static str,
         found: &'static str,
     },
+    #[error("Undefined variable `{name}`")]
+    UndefinedVariable { name: String },
+    #[error("Invalid left value in assignment, {0}")]
+    InvalidLeftValue(Span),
 }
 
 pub type IResult<T> = Result<T, Box<RuntimeError>>;
