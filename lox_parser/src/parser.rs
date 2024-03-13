@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
         let mut expr = match next_token.token_type {
             TokenType::Keyword(kw) => Expr::literal(
                 match kw {
-                    Keyword::False => Value::Bool(true),
+                    Keyword::False => Value::Bool(false),
                     Keyword::Nil => Value::Nil,
                     Keyword::True => Value::Bool(true),
                     _ => todo!(),

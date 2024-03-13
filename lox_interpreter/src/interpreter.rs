@@ -50,6 +50,16 @@ impl Interpreter {
             _ => Err(RuntimeError::InvalidLeftValue(binary.left.span.to_owned()).to_box()),
         }
     }
+
+    fn logical_expr(&mut self, binary: &BinaryExpr) -> IResult<Value> {
+        let left = walk_expr(self, &binary.left)?;
+
+        match binary.operator {
+            BinaryOp::And if !left.as_bool() => Ok(left),
+            BinaryOp::Or if left.as_bool() => Ok(left),
+            _ => walk_expr(self, &binary.right),
+        }
+    }
 }
 
 impl Visitor for Interpreter {
@@ -76,8 +86,10 @@ impl Visitor for Interpreter {
     }
 
     fn visit_binary(&mut self, binary: &BinaryExpr) -> Self::Result {
-        if matches!(binary.operator, BinaryOp::Assign) {
-            return self.assign(binary);
+        match binary.operator {
+            BinaryOp::Assign => return self.assign(binary),
+            BinaryOp::And | BinaryOp::Or => return self.logical_expr(binary),
+            _ => {}
         }
 
         let left = walk_expr(self, &binary.left)?;
