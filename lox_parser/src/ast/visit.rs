@@ -1,5 +1,5 @@
 use super::{
-    expr::{BinaryExpr, Expr, ExprInner, Group, Ternary, UnaryExpr, Value},
+    expr::{BinaryExpr, Expr, ExprInner, FnCall, Group, Ternary, UnaryExpr, Value},
     stmt::{Block, Expression, If, Print, Statement, VarDecl, While},
 };
 
@@ -45,6 +45,8 @@ pub trait Visitor: Sized {
         walk_group(self, group)
     }
 
+    fn visit_fn_call(&mut self, fn_call: &FnCall) -> Self::Result;
+
     fn visit_literal(&mut self, literal: &Value) -> Self::Result;
 
     fn visit_var(&mut self, var: &String) -> Self::Result;
@@ -77,6 +79,7 @@ pub fn walk_expr<V: Visitor>(visitor: &mut V, expr: &Expr) -> V::Result {
         ExprInner::Literal(value) => visitor.visit_literal(value),
         ExprInner::Ternary(ternary) => visitor.visit_ternary(ternary),
         ExprInner::Var(var) => visitor.visit_var(var),
+        ExprInner::FnCall(fn_call) => visitor.visit_fn_call(fn_call),
     }
 }
 

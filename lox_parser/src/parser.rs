@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::{
     ast::{
-        expr::{p, Expr, ExprInner, Value},
+        expr::{p, Expr, ExprInner, FnCall, Value},
         stmt::{Block, Expression, If, Print, Statement, VarDecl, While},
     },
     error::{PResult, ParserError},
@@ -315,17 +315,19 @@ impl<'a> Parser<'a> {
         loop {
             match Operator::from_token(&self.look_ahead()) {
                 Some(next_op) if next_op.is_precedent_than(op) => {
-                    if matches!(next_op, Operator::Ternary) {
-                        self.bump();
-                        let truthy = self.expression()?;
-                        eat!(self, TokenType::Colon);
-                        expr = Expr::ternary(expr, truthy, self.expr_precedence(next_op)?)
-                    } else {
-                        expr = Expr::binary(
+                    expr = match next_op {
+                        Operator::Ternary => {
+                            self.bump();
+                            let truthy = self.expression()?;
+                            eat!(self, TokenType::Colon);
+                            Expr::ternary(expr, truthy, self.expr_precedence(next_op)?)
+                        }
+                        Operator::FnCall => self.fn_call(expr)?,
+                        _ => Expr::binary(
                             self.next_token().token_type.into(),
                             expr,
                             self.expr_precedence(next_op)?,
-                        )
+                        ),
                     }
                 }
                 _ => break,
@@ -333,5 +335,36 @@ impl<'a> Parser<'a> {
         }
 
         Ok(expr)
+    }
+
+    fn fn_call(&mut self, callee: Expr) -> PResult<Expr> {
+        let start = eat!(self, TokenType::LeftParen);
+        let mut arguments = vec![];
+
+        if !matches!(self.look_ahead(), TokenType::RightParen) {
+            loop {
+                arguments.push(self.expression()?);
+                match self.look_ahead() {
+                    TokenType::Comma => self.bump(),
+                    _ => break,
+                }
+            }
+        }
+
+        let end = eat!(self, TokenType::RightParen);
+
+        if arguments.len() > 255 {
+            self.errors
+                .push(ParserError::TooManyArguments(start.extends_with(&end)));
+        }
+
+        let span = callee.span.extends_with(&end);
+        Ok(Expr {
+            expr: ExprInner::FnCall(FnCall {
+                callee: Box::new(callee),
+                arguments: arguments.into_boxed_slice(),
+            }),
+            span,
+        })
     }
 }

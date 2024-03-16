@@ -90,6 +90,12 @@ pub struct Group {
 }
 
 #[derive(Debug)]
+pub struct FnCall {
+    pub callee: Box<Expr>,
+    pub arguments: Box<[Expr]>,
+}
+
+#[derive(Debug)]
 pub enum ExprInner {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
@@ -97,6 +103,7 @@ pub enum ExprInner {
     Group(Group),
     Literal(Value),
     Var(String),
+    FnCall(FnCall),
 }
 
 #[derive(Debug)]

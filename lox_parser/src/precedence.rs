@@ -6,6 +6,7 @@ pub(crate) enum Operator {
     Assign,
     Divide,
     Equal,
+    FnCall,
     Greater,
     GreaterEqual,
     Less,
@@ -36,6 +37,7 @@ impl Operator {
 
     fn precedence(self) -> u8 {
         match self {
+            Operator::FnCall => 15,
             Operator::Prefix => 14,
             Operator::Multiply | Operator::Divide => 13,
             Operator::Minus | Operator::Plus => 12,
@@ -77,6 +79,7 @@ impl Operator {
             TokenType::Keyword(Keyword::And) => Operator::And,
             TokenType::Keyword(Keyword::Or) => Operator::Or,
             TokenType::Question => Operator::Ternary,
+            TokenType::LeftParen => Operator::FnCall,
             _ => return None,
         })
     }
