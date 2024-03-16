@@ -100,7 +100,7 @@ impl Display for TokenType {
             TokenType::LeftParen => write!(f, "("),
             TokenType::Less => write!(f, "<"),
             TokenType::LessEqual => write!(f, "<="),
-            TokenType::Literal(Literal::String(s)) => write!(f, "{s}"),
+            TokenType::Literal(Literal::String(s)) => write!(f, "\"{s}\""),
             TokenType::Literal(Literal::Number(n)) => write!(f, "{n}"),
             TokenType::Minus => write!(f, "-"),
             TokenType::Plus => write!(f, "+"),

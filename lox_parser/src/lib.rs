@@ -1,6 +1,5 @@
-use error::PResult;
 use lexer::Lexer;
-use parser::{Ast, Parser};
+use parser::{Parser, ParserResult};
 
 pub mod ast;
 pub mod error;
@@ -10,7 +9,7 @@ mod precedence;
 pub mod span;
 pub mod token;
 
-pub fn parse(src: &str) -> PResult<Ast> {
+pub fn parse(src: &str) -> ParserResult {
     let mut parser = Parser::new(Lexer::new(src));
     parser.parse()
 }

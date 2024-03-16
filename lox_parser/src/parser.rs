@@ -1,3 +1,5 @@
+use std::mem;
+
 use crate::{
     ast::{
         expr::{p, Expr, Value},
@@ -11,8 +13,9 @@ use crate::{
 };
 
 pub struct Parser<'a> {
-    pub(crate) lexer: Lexer<'a>,
-    pub(crate) token: Option<Token>,
+    lexer: Lexer<'a>,
+    token: Option<Token>,
+    errors: Vec<ParserError>,
 }
 
 macro_rules! eat {
@@ -32,42 +35,61 @@ macro_rules! match_keyword {
 }
 
 pub type Ast = Vec<Statement>;
+pub type ParserResult = Result<Ast, Box<[ParserError]>>;
 
 impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Self {
-        Self { lexer, token: None }
+        Self {
+            lexer,
+            token: None,
+            errors: vec![],
+        }
     }
 
-    pub fn parse(&mut self) -> PResult<Ast> {
+    pub fn parse(&mut self) -> ParserResult {
         let mut statements = vec![];
         while !matches!(self.look_ahead(), TokenType::Eof) {
-            statements.push(self.declaration()?);
+            match self.declaration() {
+                Ok(stmt) => statements.push(stmt),
+                Err(err) => {
+                    self.errors.push(*err);
+                    self.synchronize();
+                }
+            }
         }
-        Ok(statements)
+        if self.errors.len() > 0 {
+            Err(mem::take(&mut self.errors).into_boxed_slice())
+        } else {
+            Ok(statements)
+        }
     }
 
-    pub(crate) fn bump(&mut self) {
+    fn bump(&mut self) {
         self.token = None;
     }
 
-    pub(crate) fn next_token(&mut self) -> Token {
+    fn next_token(&mut self) -> Token {
         match self.token.take() {
             Some(token) => token,
             None => self.lexer.next_token(),
         }
     }
 
-    pub(crate) fn look_ahead(&mut self) -> &TokenType {
+    fn look_ahead(&mut self) -> &TokenType {
         &self
             .token
             .get_or_insert_with(|| self.lexer.next_token())
             .token_type
     }
 
-    pub(crate) fn synchronize(&mut self) {
+    fn synchronize(&mut self) {
         loop {
             match self.look_ahead() {
                 TokenType::Eof => return,
+                TokenType::Semicolon => {
+                    self.bump();
+                    return;
+                }
                 TokenType::Keyword(kw)
                     if matches!(
                         kw,
@@ -150,7 +172,13 @@ impl<'a> Parser<'a> {
         self.bump();
         let mut statements = vec![];
         while !matches!(self.look_ahead(), TokenType::RightBrace) {
-            statements.push(self.declaration()?);
+            match self.declaration() {
+                Ok(stmt) => statements.push(stmt),
+                Err(err) => {
+                    self.errors.push(*err);
+                    self.synchronize();
+                }
+            }
         }
 
         eat!(self, TokenType::RightBrace);

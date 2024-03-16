@@ -13,7 +13,11 @@ fn run(src: &str) {
                 println!("{err}");
             }
         }
-        Err(e) => eprintln!("{e}"),
+        Err(errors) => {
+            for error in errors.into_iter() {
+                eprintln!("{error}");
+            }
+        }
     }
 }
 
