@@ -1,6 +1,6 @@
 use lox_parser::{
     ast::{
-        expr::{self, BinaryExpr, BinaryOp, ExprInner, UnaryExpr, UnaryOp, Value},
+        expr::{self, BinaryExpr, BinaryOp, Expr, ExprInner, UnaryExpr, UnaryOp, Value},
         stmt::{Block, Print, VarDecl},
         visit::{walk_expr, walk_stmt, Visitor},
     },
@@ -11,15 +11,6 @@ use crate::{
     environment::Environment,
     error::{IResult, RuntimeError},
 };
-
-macro_rules! get_number {
-    ($value: expr, $span: expr) => {
-        match $value {
-            Value::Number(n) => n,
-            v => return Err(RuntimeError::type_error($span, "number", &v)),
-        }
-    };
-}
 
 pub struct Interpreter {
     env: Environment,
@@ -60,6 +51,14 @@ impl Interpreter {
             _ => walk_expr(self, &binary.right),
         }
     }
+
+    fn get_number(&mut self, expr: &Expr) -> IResult<f64> {
+        let value = walk_expr(self, expr)?;
+        match value {
+            Value::Number(n) => Ok(n),
+            v => Err(RuntimeError::type_error(&expr.span, "number", &v)),
+        }
+    }
 }
 
 impl Visitor for Interpreter {
@@ -92,52 +91,57 @@ impl Visitor for Interpreter {
             _ => {}
         }
 
-        let left = walk_expr(self, &binary.left)?;
-        let right = walk_expr(self, &binary.right)?;
+        let BinaryExpr {
+            operator,
+            left,
+            right,
+        } = binary;
 
-        Ok(match binary.operator {
-            BinaryOp::Plus => match (left, right) {
-                (Value::Number(n1), Value::Number(n2)) => (n1 + n2).into(),
-                (Value::String(s1), v2) => (s1 + &v2.to_string()).into(),
-                (v1, Value::String(s2)) => (v1.to_string() + &s2).into(),
-                (v, Value::Number(_)) => {
-                    return Err(RuntimeError::type_error(&binary.left.span, "number", &v))
+        Ok(match operator {
+            BinaryOp::Plus => {
+                let left = walk_expr(self, left)?;
+                let right = walk_expr(self, right)?;
+
+                match (left, right) {
+                    (Value::Number(n1), Value::Number(n2)) => (n1 + n2).into(),
+                    (Value::String(s1), v2) => (s1 + &v2.to_string()).into(),
+                    (v1, Value::String(s2)) => (v1.to_string() + &s2).into(),
+                    (v, Value::Number(_)) => {
+                        return Err(RuntimeError::type_error(&binary.left.span, "number", &v))
+                    }
+                    (Value::Number(_), v) => {
+                        return Err(RuntimeError::type_error(
+                            &binary.right.span,
+                            "number or string",
+                            &v,
+                        ))
+                    }
+                    (v, _) => {
+                        return Err(RuntimeError::type_error(
+                            &binary.left.span,
+                            "number or string",
+                            &v,
+                        ))
+                    }
                 }
-                (Value::Number(_), v) => {
-                    return Err(RuntimeError::type_error(
-                        &binary.right.span,
-                        "number or string",
-                        &v,
-                    ))
-                }
-                (v, _) => {
-                    return Err(RuntimeError::type_error(
-                        &binary.left.span,
-                        "number or string",
-                        &v,
-                    ))
-                }
-            },
-            BinaryOp::Minus => (get_number!(left, &binary.left.span)
-                - get_number!(right, &binary.right.span))
-            .into(),
-            BinaryOp::Multiply => (get_number!(left, &binary.left.span)
-                * get_number!(right, &binary.right.span))
-            .into(),
-            BinaryOp::Divide => (get_number!(left, &binary.left.span)
-                / get_number!(right, &binary.right.span))
-            .into(),
-            BinaryOp::Equal => (left == right).into(),
-            BinaryOp::NotEqual => (left != right).into(),
-            _ => todo!(),
+            }
+            BinaryOp::Minus => (self.get_number(left)? - self.get_number(right)?).into(),
+            BinaryOp::Multiply => (self.get_number(left)? * self.get_number(right)?).into(),
+            BinaryOp::Divide => (self.get_number(left)? / self.get_number(right)?).into(),
+            BinaryOp::Equal => (walk_expr(self, left)? == walk_expr(self, right)?).into(),
+            BinaryOp::NotEqual => (walk_expr(self, left)? != walk_expr(self, right)?).into(),
+            BinaryOp::Greater => (self.get_number(left)? > self.get_number(right)?).into(),
+            BinaryOp::GreaterEqual => (self.get_number(left)? >= self.get_number(right)?).into(),
+            BinaryOp::Less => (self.get_number(left)? < self.get_number(right)?).into(),
+            BinaryOp::LessEqual => (self.get_number(left)? <= self.get_number(right)?).into(),
+            _ => unreachable!(),
         })
     }
 
     fn visit_unary(&mut self, unary: &UnaryExpr) -> Self::Result {
-        let operand = walk_expr(self, &unary.operand)?;
         Ok(match unary.operator {
-            UnaryOp::Negative => (-get_number!(operand, &unary.operand.span)).into(),
-            UnaryOp::Not => (!operand.as_bool()).into(),
+            UnaryOp::Negative => (-self.get_number(&unary.operand)?).into(),
+            UnaryOp::Not => (!walk_expr(self, &unary.operand)?.as_bool()).into(),
         })
     }
 
