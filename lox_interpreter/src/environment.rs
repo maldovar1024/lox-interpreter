@@ -1,8 +1,9 @@
 use std::{collections::HashMap, mem};
 
-use lox_parser::ast::expr::Value;
-
-use crate::error::{IResult, RuntimeError};
+use crate::{
+    error::{IResult, RuntimeError},
+    value::Value,
+};
 
 #[derive(Default)]
 pub(crate) struct Environment {

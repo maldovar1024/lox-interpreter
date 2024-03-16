@@ -1,6 +1,6 @@
 use lox_parser::{
     ast::{
-        expr::{self, BinaryExpr, BinaryOp, Expr, ExprInner, UnaryExpr, UnaryOp, Value},
+        expr::{self, BinaryExpr, BinaryOp, Expr, ExprInner, FnCall, Lit, UnaryExpr, UnaryOp},
         stmt::{Block, If, Print, VarDecl, While},
         visit::{walk_expr, walk_stmt, Visitor},
     },
@@ -10,6 +10,7 @@ use lox_parser::{
 use crate::{
     environment::Environment,
     error::{IResult, RuntimeError},
+    value::Value,
 };
 
 pub struct Interpreter {
@@ -97,7 +98,7 @@ impl Visitor for Interpreter {
         Ok(Value::Nil)
     }
 
-    fn visit_literal(&mut self, literal: &expr::Value) -> Self::Result {
+    fn visit_literal(&mut self, literal: &Lit) -> Self::Result {
         Ok(literal.clone().into())
     }
 

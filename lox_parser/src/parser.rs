@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::{
     ast::{
-        expr::{p, Expr, ExprInner, FnCall, Value},
+        expr::{p, Expr, ExprInner, FnCall, Lit},
         stmt::{Block, Expression, If, Print, Statement, VarDecl, While},
     },
     error::{PResult, ParserError},
@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
 
         let inner = Statement::While(While {
             condition: condition.unwrap_or(Expr {
-                expr: ExprInner::Literal(Value::Bool(true)),
+                expr: ExprInner::Literal(Lit::Bool(true)),
                 span: condition_span,
             }),
             body: match increment {
@@ -278,9 +278,9 @@ impl<'a> Parser<'a> {
         let mut expr = match next_token.token_type {
             TokenType::Keyword(kw) => Expr::literal(
                 match kw {
-                    Keyword::False => Value::Bool(false),
-                    Keyword::Nil => Value::Nil,
-                    Keyword::True => Value::Bool(true),
+                    Keyword::False => Lit::Bool(false),
+                    Keyword::Nil => Lit::Nil,
+                    Keyword::True => Lit::Bool(true),
                     _ => todo!(),
                 },
                 next_token.span,
@@ -292,8 +292,8 @@ impl<'a> Parser<'a> {
             }
             TokenType::Literal(lit) => Expr::literal(
                 match lit {
-                    Literal::String(s) => Value::String(s),
-                    Literal::Number(n) => Value::Number(n),
+                    Literal::String(s) => Lit::String(s),
+                    Literal::Number(n) => Lit::Number(n),
                 },
                 next_token.span,
             ),

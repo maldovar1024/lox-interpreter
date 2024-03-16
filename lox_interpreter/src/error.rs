@@ -1,5 +1,7 @@
-use lox_parser::{ast::expr::Value, span::Span};
+use lox_parser::span::Span;
 use thiserror::Error;
+
+use crate::value::Value;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {

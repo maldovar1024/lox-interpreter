@@ -1,5 +1,5 @@
 use super::{
-    expr::{BinaryExpr, Expr, ExprInner, FnCall, Group, Ternary, UnaryExpr, Value},
+    expr::{BinaryExpr, Expr, ExprInner, FnCall, Group, Ternary, UnaryExpr, Lit},
     stmt::{Block, Expression, If, Print, Statement, VarDecl, While},
 };
 
@@ -47,7 +47,7 @@ pub trait Visitor: Sized {
 
     fn visit_fn_call(&mut self, fn_call: &FnCall) -> Self::Result;
 
-    fn visit_literal(&mut self, literal: &Value) -> Self::Result;
+    fn visit_literal(&mut self, literal: &Lit) -> Self::Result;
 
     fn visit_var(&mut self, var: &String) -> Self::Result;
 }
