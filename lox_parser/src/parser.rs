@@ -2,8 +2,8 @@ use std::mem;
 
 use crate::{
     ast::{
-        expr::{p, Expr, Value},
-        stmt::{Block, Expression, Print, Statement, VarDecl},
+        expr::{p, Expr, ExprInner, Value},
+        stmt::{Block, Expression, If, Print, Statement, VarDecl, While},
     },
     error::{PResult, ParserError},
     lexer::Lexer,
@@ -147,6 +147,9 @@ impl<'a> Parser<'a> {
         match self.look_ahead() {
             TokenType::Keyword(Keyword::Print) => self.print_statement(),
             TokenType::LeftBrace => self.block(),
+            TokenType::Keyword(Keyword::If) => self.if_statement(),
+            TokenType::Keyword(Keyword::While) => self.while_statement(),
+            TokenType::Keyword(Keyword::For) => self.for_statement(),
             _ => self.expression_statement(),
         }
     }
@@ -158,6 +161,83 @@ impl<'a> Parser<'a> {
         });
         eat!(self, TokenType::Semicolon);
         Ok(stmt)
+    }
+
+    fn if_statement(&mut self) -> PResult<Statement> {
+        self.bump();
+        eat!(self, TokenType::LeftParen);
+        let condition = self.expression()?;
+        eat!(self, TokenType::RightParen);
+        let then_branch = Box::new(self.statement()?);
+        let else_branch = if match_keyword!(self, Keyword::Else) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+        Ok(Statement::If(If {
+            condition,
+            then_branch,
+            else_branch,
+        }))
+    }
+
+    fn while_statement(&mut self) -> PResult<Statement> {
+        self.bump();
+        eat!(self, TokenType::LeftParen);
+        let condition = self.expression()?;
+        eat!(self, TokenType::RightParen);
+        let body = Box::new(self.statement()?);
+        Ok(Statement::While(While { condition, body }))
+    }
+
+    fn for_statement(&mut self) -> PResult<Statement> {
+        self.bump();
+        eat!(self, TokenType::LeftParen);
+        let initializer = match self.look_ahead() {
+            TokenType::Semicolon => {
+                self.bump();
+                None
+            }
+            TokenType::Keyword(Keyword::Var) => Some(self.var_decl()?),
+            _ => Some(self.expression_statement()?),
+        };
+
+        let condition = match self.look_ahead() {
+            TokenType::Semicolon => None,
+            _ => Some(self.expression()?),
+        };
+        let condition_span = eat!(self, TokenType::Semicolon);
+
+        let increment = match self.look_ahead() {
+            TokenType::RightParen => None,
+            _ => Some(self.expression()?),
+        };
+        eat!(self, TokenType::RightParen);
+
+        let body = self.statement()?;
+
+        let inner = Statement::While(While {
+            condition: condition.unwrap_or(Expr {
+                expr: ExprInner::Literal(Value::Bool(true)),
+                span: condition_span,
+            }),
+            body: match increment {
+                Some(increment) => Box::new(Statement::Block(Block {
+                    statements: Box::new([
+                        body,
+                        Statement::Expression(Expression { expr: increment }),
+                    ]),
+                })),
+                None => Box::new(body),
+            },
+        });
+
+        Ok(match initializer {
+            Some(initializer) => Statement::Block(Block {
+                statements: Box::new([initializer, inner]),
+            }),
+            None => inner,
+        })
     }
 
     fn expression_statement(&mut self) -> PResult<Statement> {

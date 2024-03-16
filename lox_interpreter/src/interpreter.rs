@@ -1,7 +1,7 @@
 use lox_parser::{
     ast::{
         expr::{self, BinaryExpr, BinaryOp, Expr, ExprInner, UnaryExpr, UnaryOp, Value},
-        stmt::{Block, Print, VarDecl},
+        stmt::{Block, If, Print, VarDecl, While},
         visit::{walk_expr, walk_stmt, Visitor},
     },
     parser::Ast,
@@ -78,6 +78,23 @@ impl Visitor for Interpreter {
         self.env.end_scope();
 
         result.and(Ok(Value::Nil))
+    }
+
+    fn visit_if(&mut self, if_stmt: &If) -> Self::Result {
+        if walk_expr(self, &if_stmt.condition)?.as_bool() {
+            walk_stmt(self, &if_stmt.then_branch)?;
+        } else if let Some(else_branch) = &if_stmt.else_branch {
+            walk_stmt(self, else_branch)?;
+        }
+
+        Ok(Value::Nil)
+    }
+
+    fn visit_while(&mut self, while_stmt: &While) -> Self::Result {
+        while walk_expr(self, &while_stmt.condition)?.as_bool() {
+            walk_stmt(self, &while_stmt.body)?;
+        }
+        Ok(Value::Nil)
     }
 
     fn visit_literal(&mut self, literal: &expr::Value) -> Self::Result {

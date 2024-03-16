@@ -22,9 +22,24 @@ pub struct Block {
 }
 
 #[derive(Debug)]
+pub struct If {
+    pub condition: Expr,
+    pub then_branch: Box<Statement>,
+    pub else_branch: Option<Box<Statement>>,
+}
+
+#[derive(Debug)]
+pub struct While {
+    pub condition: Expr,
+    pub body: Box<Statement>,
+}
+
+#[derive(Debug)]
 pub enum Statement {
     Print(Print),
     Expression(Expression),
     Var(VarDecl),
     Block(Block),
+    If(If),
+    While(While),
 }
