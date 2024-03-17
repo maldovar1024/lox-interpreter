@@ -1,3 +1,8 @@
+use std::{
+    rc::Rc,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use lox_parser::{
     ast::{
         expr::{self, BinaryExpr, BinaryOp, Expr, ExprInner, FnCall, Lit, UnaryExpr, UnaryOp},
@@ -10,7 +15,7 @@ use lox_parser::{
 use crate::{
     environment::Environment,
     error::{IResult, RuntimeError},
-    value::Value,
+    value::{Callable, NativeFunction, Value},
 };
 
 pub struct Interpreter {
@@ -19,9 +24,25 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self {
-            env: Environment::default(),
-        }
+        let mut global_env = Environment::default();
+
+        global_env.define(
+            "clock",
+            Value::NativeFunction(Rc::new(NativeFunction {
+                name: "clock",
+                arity: 0,
+                fun: |_, _| {
+                    Ok(Value::Number(
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs_f64(),
+                    ))
+                },
+            })),
+        );
+
+        Self { env: global_env }
     }
 
     pub fn interpret(&mut self, ast: &Ast) -> IResult<Value> {
@@ -96,6 +117,36 @@ impl Visitor for Interpreter {
             walk_stmt(self, &while_stmt.body)?;
         }
         Ok(Value::Nil)
+    }
+
+    fn visit_fn_call(&mut self, fn_call: &FnCall) -> Self::Result {
+        let callee = walk_expr(self, &fn_call.callee)?;
+        let mut arguments = Vec::with_capacity(fn_call.arguments.len());
+        for arg in fn_call.arguments.iter() {
+            arguments.push(walk_expr(self, arg)?);
+        }
+
+        let f: &dyn Callable = match callee {
+            Value::NativeFunction(ref f) => f.as_ref(),
+            _ => {
+                return Err(RuntimeError::NotCallable {
+                    target: callee.to_string(),
+                    span: fn_call.callee.span.clone(),
+                }
+                .to_box())
+            }
+        };
+
+        if arguments.len() != f.arity() as usize {
+            return Err(RuntimeError::ArgumentsNotMatch {
+                expected: f.arity(),
+                got: arguments.len(),
+                span: fn_call.callee.span.clone(),
+            }
+            .to_box());
+        }
+
+        f.call(self, &arguments)
     }
 
     fn visit_literal(&mut self, literal: &Lit) -> Self::Result {

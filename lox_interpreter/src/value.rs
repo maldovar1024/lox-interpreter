@@ -1,6 +1,37 @@
-use std::fmt::Display;
+use std::{fmt::Display, rc::Rc};
 
 use lox_parser::ast::expr::Lit;
+
+use crate::{error::IResult, interpreter::Interpreter};
+
+pub trait Callable {
+    fn arity(&self) -> u8;
+
+    fn call(&self, interpreter: &mut Interpreter, arguments: &[Value]) -> IResult<Value>;
+}
+
+#[derive(Debug)]
+pub struct NativeFunction {
+    pub name: &'static str,
+    pub arity: u8,
+    pub fun: fn(&mut Interpreter, &[Value]) -> IResult<Value>,
+}
+
+impl PartialEq for NativeFunction {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Callable for NativeFunction {
+    fn arity(&self) -> u8 {
+        self.arity
+    }
+
+    fn call(&self, interpreter: &mut Interpreter, arguments: &[Value]) -> IResult<Value> {
+        (self.fun)(interpreter, arguments)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -8,6 +39,7 @@ pub enum Value {
     String(String),
     Bool(bool),
     Nil,
+    NativeFunction(Rc<NativeFunction>),
 }
 
 impl Value {
@@ -17,6 +49,7 @@ impl Value {
             Value::String(s) => s != "",
             Value::Bool(b) => *b,
             Value::Nil => false,
+            _ => true,
         }
     }
 
@@ -26,6 +59,7 @@ impl Value {
             Value::String(_) => "string",
             Value::Bool(_) => "bool",
             Value::Nil => "nil",
+            Value::NativeFunction(f) => f.name,
         }
     }
 }
@@ -66,6 +100,7 @@ impl Display for Value {
             Value::String(s) => write!(f, "{s}"),
             Value::Bool(b) => write!(f, "{b}"),
             Value::Nil => write!(f, "nil"),
+            Value::NativeFunction(fun) => write!(f, "<native function> {}", fun.name),
         }
     }
 }
