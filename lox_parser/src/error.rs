@@ -12,8 +12,8 @@ pub enum ParserError {
         found: TokenType,
         span: Span,
     },
-    #[error("{0}: too many arguments")]
-    TooManyArguments(Span),
+    #[error("{0}: too many parameters")]
+    TooManyParameters(Span),
 }
 
 impl ParserError {

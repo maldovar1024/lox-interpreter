@@ -7,8 +7,13 @@ reference: https://craftinginterpreters.com/contents.html
 ```
 program        → declaration* EOF ;
 
-declaration    → varDecl
+declaration    → funDecl
+               | varDecl
                | statement ;
+
+funDecl        → "fun" function ;
+function       → IDENTIFIER "(" parameters? ")" block ;
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 
 statement      → exprStmt
                | ifStmt

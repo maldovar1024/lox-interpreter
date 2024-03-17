@@ -35,6 +35,13 @@ pub struct While {
 }
 
 #[derive(Debug)]
+pub struct FnDecl {
+    pub name: String,
+    pub params: Box<[String]>,
+    pub body: Box<[Statement]>,
+}
+
+#[derive(Debug)]
 pub enum Statement {
     Print(Print),
     Expression(Expression),
@@ -42,4 +49,5 @@ pub enum Statement {
     Block(Block),
     If(If),
     While(While),
+    FnDecl(FnDecl)
 }

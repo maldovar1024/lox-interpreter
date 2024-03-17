@@ -1,6 +1,6 @@
 use super::{
-    expr::{BinaryExpr, Expr, ExprInner, FnCall, Group, Ternary, UnaryExpr, Lit},
-    stmt::{Block, Expression, If, Print, Statement, VarDecl, While},
+    expr::{BinaryExpr, Expr, ExprInner, FnCall, Group, Lit, Ternary, UnaryExpr},
+    stmt::{Block, Expression, FnDecl, If, Print, Statement, VarDecl, While},
 };
 
 pub trait Visitor: Sized {
@@ -25,6 +25,8 @@ pub trait Visitor: Sized {
     fn visit_block(&mut self, block: &Block) -> Self::Result;
 
     fn visit_var_decl(&mut self, var_decl: &VarDecl) -> Self::Result;
+
+    fn visit_function(&mut self, function: &FnDecl) -> Self::Result;
 
     fn visit_expr(&mut self, expr: &Expr) -> Self::Result {
         walk_expr(self, expr)
@@ -60,6 +62,7 @@ pub fn walk_stmt<V: Visitor>(visitor: &mut V, stmt: &Statement) -> V::Result {
         Statement::Block(block) => visitor.visit_block(block),
         Statement::If(if_stmt) => visitor.visit_if(if_stmt),
         Statement::While(while_stmt) => visitor.visit_while(while_stmt),
+        Statement::FnDecl(function) => visitor.visit_function(function),
     }
 }
 

@@ -3,7 +3,7 @@ use std::mem;
 use crate::{
     ast::{
         expr::{p, Expr, ExprInner, FnCall, Lit},
-        stmt::{Block, Expression, If, Print, Statement, VarDecl, While},
+        stmt::{Block, Expression, FnDecl, If, Print, Statement, VarDecl, While},
     },
     error::{PResult, ParserError},
     lexer::Lexer,
@@ -82,6 +82,18 @@ impl<'a> Parser<'a> {
             .token_type
     }
 
+    fn get_identifier(&mut self) -> PResult<String> {
+        let next_token = self.next_token();
+        match next_token.token_type {
+            TokenType::Identifier(ident) => Ok(ident),
+            t => Err(ParserError::expect_structure(
+                "identifier",
+                t,
+                next_token.span,
+            )),
+        }
+    }
+
     fn synchronize(&mut self) {
         loop {
             match self.look_ahead() {
@@ -111,10 +123,11 @@ impl<'a> Parser<'a> {
     }
 
     fn declaration(&mut self) -> PResult<Statement> {
-        if match_keyword!(self, Keyword::Var) {
-            return self.var_decl();
+        match self.look_ahead() {
+            TokenType::Keyword(Keyword::Var) => self.var_decl(),
+            TokenType::Keyword(Keyword::Fun) => self.function(),
+            _ => self.statement(),
         }
-        self.statement()
     }
 
     fn var_decl(&mut self) -> PResult<Statement> {
@@ -143,10 +156,42 @@ impl<'a> Parser<'a> {
         Ok(Statement::Var(VarDecl { ident, initializer }))
     }
 
+    fn function(&mut self) -> PResult<Statement> {
+        self.bump();
+        let name = self.get_identifier()?;
+
+        let start = eat!(self, TokenType::LeftParen);
+
+        let mut parameters = vec![];
+        if !matches!(self.look_ahead(), TokenType::RightParen) {
+            loop {
+                parameters.push(self.get_identifier()?);
+                match self.look_ahead() {
+                    TokenType::Comma => self.bump(),
+                    _ => break,
+                }
+            }
+        }
+        let end = eat!(self, TokenType::RightParen);
+
+        if parameters.len() > 255 {
+            self.errors
+                .push(ParserError::TooManyParameters(start.extends_with(&end)));
+        }
+
+        Ok(Statement::FnDecl(FnDecl {
+            name,
+            params: parameters.into_boxed_slice(),
+            body: self.block()?,
+        }))
+    }
+
     fn statement(&mut self) -> PResult<Statement> {
         match self.look_ahead() {
             TokenType::Keyword(Keyword::Print) => self.print_statement(),
-            TokenType::LeftBrace => self.block(),
+            TokenType::LeftBrace => Ok(Statement::Block(Block {
+                statements: self.block()?,
+            })),
             TokenType::Keyword(Keyword::If) => self.if_statement(),
             TokenType::Keyword(Keyword::While) => self.while_statement(),
             TokenType::Keyword(Keyword::For) => self.for_statement(),
@@ -248,7 +293,7 @@ impl<'a> Parser<'a> {
         Ok(stmt)
     }
 
-    fn block(&mut self) -> PResult<Statement> {
+    fn block(&mut self) -> PResult<Box<[Statement]>> {
         self.bump();
         let mut statements = vec![];
         while !matches!(self.look_ahead(), TokenType::RightBrace) {
@@ -263,9 +308,7 @@ impl<'a> Parser<'a> {
 
         eat!(self, TokenType::RightBrace);
 
-        Ok(Statement::Block(Block {
-            statements: statements.into_boxed_slice(),
-        }))
+        Ok(statements.into_boxed_slice())
     }
 
     fn expression(&mut self) -> PResult<Expr> {
@@ -338,7 +381,7 @@ impl<'a> Parser<'a> {
     }
 
     fn fn_call(&mut self, callee: Expr) -> PResult<Expr> {
-        let start = eat!(self, TokenType::LeftParen);
+        eat!(self, TokenType::LeftParen);
         let mut arguments = vec![];
 
         if !matches!(self.look_ahead(), TokenType::RightParen) {
@@ -352,12 +395,6 @@ impl<'a> Parser<'a> {
         }
 
         let end = eat!(self, TokenType::RightParen);
-
-        if arguments.len() > 255 {
-            self.errors
-                .push(ParserError::TooManyArguments(start.extends_with(&end)));
-        }
-
         let span = callee.span.extends_with(&end);
         Ok(Expr {
             expr: ExprInner::FnCall(FnCall {
