@@ -8,7 +8,7 @@ pub(crate) fn p<T>(x: T) -> Box<T> {
     Box::new(x)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BinaryOp {
     And,
     Assign,
@@ -46,14 +46,14 @@ impl From<TokenType> for BinaryOp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub operator: BinaryOp,
     pub left: Box<Expr>,
     pub right: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryOp {
     Negative,
     Not,
@@ -69,31 +69,31 @@ impl From<TokenType> for UnaryOp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnaryExpr {
     pub operator: UnaryOp,
     pub operand: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ternary {
     pub condition: Box<Expr>,
     pub truthy: Box<Expr>,
     pub falsy: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Group {
     pub expr: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FnCall {
     pub callee: Box<Expr>,
     pub arguments: Box<[Expr]>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExprInner {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
@@ -104,7 +104,7 @@ pub enum ExprInner {
     FnCall(FnCall),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expr {
     pub expr: ExprInner,
     pub span: Span,

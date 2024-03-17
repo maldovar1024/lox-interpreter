@@ -1,20 +1,20 @@
-use std::{fmt::Display, rc::Rc};
+use std::{fmt::Display, ptr, rc::Rc};
 
-use lox_parser::ast::expr::Lit;
+use lox_parser::ast::{expr::Lit, stmt::FnDecl};
 
 use crate::{error::IResult, interpreter::Interpreter};
 
 pub trait Callable {
     fn arity(&self) -> u8;
 
-    fn call(&self, interpreter: &mut Interpreter, arguments: &[Value]) -> IResult<Value>;
+    fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value>;
 }
 
 #[derive(Debug)]
 pub struct NativeFunction {
     pub name: &'static str,
     pub arity: u8,
-    pub fun: fn(&mut Interpreter, &[Value]) -> IResult<Value>,
+    pub fun: fn(&mut Interpreter, Vec<Value>) -> IResult<Value>,
 }
 
 impl PartialEq for NativeFunction {
@@ -28,18 +28,52 @@ impl Callable for NativeFunction {
         self.arity
     }
 
-    fn call(&self, interpreter: &mut Interpreter, arguments: &[Value]) -> IResult<Value> {
+    fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
         (self.fun)(interpreter, arguments)
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
+pub struct Function(pub FnDecl);
+
+impl Callable for Function {
+    fn arity(&self) -> u8 {
+        self.0.params.len() as u8
+    }
+
+    fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
+        interpreter.env.start_scope();
+        for (name, value) in self.0.params.iter().zip(arguments) {
+            interpreter.env.define(name, value)
+        }
+        let result = interpreter.execute_block(&self.0.body);
+        interpreter.env.end_scope();
+        result.and(Ok(Value::Nil))
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Value {
     Number(f64),
     String(String),
     Bool(bool),
     Nil,
     NativeFunction(Rc<NativeFunction>),
+    Function(Rc<Function>),
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Number(n1), Self::Number(n2)) => n1 == n2,
+            (Self::String(s1), Self::String(s2)) => s1 == s2,
+            (Self::Bool(b1), Self::Bool(b2)) => b1 == b2,
+            (Self::NativeFunction(f1), Self::NativeFunction(f2)) => f1 == f2,
+            (Self::Function(f1), Self::Function(f2)) => ptr::eq(f1, f2),
+            (Self::Nil, Self::Nil) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Value {
@@ -59,7 +93,8 @@ impl Value {
             Value::String(_) => "string",
             Value::Bool(_) => "bool",
             Value::Nil => "nil",
-            Value::NativeFunction(f) => f.name,
+            Value::NativeFunction(_) => "native function",
+            Value::Function(_) => "function",
         }
     }
 }
@@ -100,7 +135,8 @@ impl Display for Value {
             Value::String(s) => write!(f, "{s}"),
             Value::Bool(b) => write!(f, "{b}"),
             Value::Nil => write!(f, "nil"),
-            Value::NativeFunction(fun) => write!(f, "<native function> {}", fun.name),
+            Value::NativeFunction(fun) => write!(f, "<native function {}>", fun.name),
+            Value::Function(fun) => write!(f, "<function {}>", fun.0.name),
         }
     }
 }

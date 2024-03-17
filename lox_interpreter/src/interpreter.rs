@@ -5,8 +5,8 @@ use std::{
 
 use lox_parser::{
     ast::{
-        expr::{self, BinaryExpr, BinaryOp, Expr, ExprInner, FnCall, Lit, UnaryExpr, UnaryOp},
-        stmt::{Block, If, Print, VarDecl, While},
+        expr::{BinaryExpr, BinaryOp, Expr, ExprInner, FnCall, Lit, Ternary, UnaryExpr, UnaryOp},
+        stmt::{Block, FnDecl, If, Print, Statement, VarDecl, While},
         visit::{walk_expr, walk_stmt, Visitor},
     },
     parser::Ast,
@@ -15,11 +15,11 @@ use lox_parser::{
 use crate::{
     environment::Environment,
     error::{IResult, RuntimeError},
-    value::{Callable, NativeFunction, Value},
+    value::{Callable, Function, NativeFunction, Value},
 };
 
 pub struct Interpreter {
-    env: Environment,
+    pub(crate) env: Environment,
 }
 
 impl Interpreter {
@@ -81,6 +81,13 @@ impl Interpreter {
             v => Err(RuntimeError::type_error(&expr.span, "number", &v)),
         }
     }
+
+    pub(crate) fn execute_block(&mut self, block: &[Statement]) -> IResult<Value> {
+        for stmt in block.iter() {
+            walk_stmt(self, stmt)?;
+        }
+        Ok(Value::Nil)
+    }
 }
 
 impl Visitor for Interpreter {
@@ -93,12 +100,8 @@ impl Visitor for Interpreter {
 
     fn visit_block(&mut self, block: &Block) -> Self::Result {
         self.env.start_scope();
-        let result = block
-            .statements
-            .iter()
-            .try_for_each(|stmt| walk_stmt(self, stmt).and(Ok(())));
+        let result = self.execute_block(&block.statements);
         self.env.end_scope();
-
         result.and(Ok(Value::Nil))
     }
 
@@ -119,6 +122,14 @@ impl Visitor for Interpreter {
         Ok(Value::Nil)
     }
 
+    fn visit_function(&mut self, function: &FnDecl) -> Self::Result {
+        self.env.define(
+            &function.name,
+            Value::Function(Rc::new(Function(function.to_owned()))),
+        );
+        Ok(Value::Nil)
+    }
+
     fn visit_fn_call(&mut self, fn_call: &FnCall) -> Self::Result {
         let callee = walk_expr(self, &fn_call.callee)?;
         let mut arguments = Vec::with_capacity(fn_call.arguments.len());
@@ -128,6 +139,7 @@ impl Visitor for Interpreter {
 
         let f: &dyn Callable = match callee {
             Value::NativeFunction(ref f) => f.as_ref(),
+            Value::Function(ref f) => f.as_ref(),
             _ => {
                 return Err(RuntimeError::NotCallable {
                     target: callee.to_string(),
@@ -146,7 +158,7 @@ impl Visitor for Interpreter {
             .to_box());
         }
 
-        f.call(self, &arguments)
+        f.call(self, arguments)
     }
 
     fn visit_literal(&mut self, literal: &Lit) -> Self::Result {
@@ -214,7 +226,7 @@ impl Visitor for Interpreter {
         })
     }
 
-    fn visit_ternary(&mut self, ternary: &expr::Ternary) -> Self::Result {
+    fn visit_ternary(&mut self, ternary: &Ternary) -> Self::Result {
         let condition = walk_expr(self, &ternary.condition)?;
         if condition.as_bool() {
             walk_expr(self, &ternary.truthy)

@@ -64,10 +64,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn bump(&mut self) {
-        self.token = None;
-    }
-
     fn next_token(&mut self) -> Token {
         match self.token.take() {
             Some(token) => token,
@@ -99,7 +95,7 @@ impl<'a> Parser<'a> {
             match self.look_ahead() {
                 TokenType::Eof => return,
                 TokenType::Semicolon => {
-                    self.bump();
+                    self.next_token();
                     return;
                 }
                 TokenType::Keyword(kw)
@@ -117,7 +113,9 @@ impl<'a> Parser<'a> {
                 {
                     return
                 }
-                _ => self.bump(),
+                _ => {
+                    self.next_token();
+                }
             }
         }
     }
@@ -131,7 +129,7 @@ impl<'a> Parser<'a> {
     }
 
     fn var_decl(&mut self) -> PResult<Statement> {
-        self.bump();
+        self.next_token();
         let next_token = self.next_token();
         let ident = match next_token.token_type {
             TokenType::Identifier(ident) => ident,
@@ -145,7 +143,7 @@ impl<'a> Parser<'a> {
         };
 
         let initializer = if matches!(self.look_ahead(), TokenType::Equal) {
-            self.bump();
+            self.next_token();
             Some(self.expression()?)
         } else {
             None
@@ -157,7 +155,7 @@ impl<'a> Parser<'a> {
     }
 
     fn function(&mut self) -> PResult<Statement> {
-        self.bump();
+        self.next_token();
         let name = self.get_identifier()?;
 
         let start = eat!(self, TokenType::LeftParen);
@@ -167,7 +165,9 @@ impl<'a> Parser<'a> {
             loop {
                 parameters.push(self.get_identifier()?);
                 match self.look_ahead() {
-                    TokenType::Comma => self.bump(),
+                    TokenType::Comma => {
+                        self.next_token();
+                    }
                     _ => break,
                 }
             }
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
     }
 
     fn print_statement(&mut self) -> PResult<Statement> {
-        self.bump();
+        self.next_token();
         let stmt = Statement::Print(Print {
             expr: self.expression()?,
         });
@@ -209,7 +209,7 @@ impl<'a> Parser<'a> {
     }
 
     fn if_statement(&mut self) -> PResult<Statement> {
-        self.bump();
+        self.next_token();
         eat!(self, TokenType::LeftParen);
         let condition = self.expression()?;
         eat!(self, TokenType::RightParen);
@@ -227,7 +227,7 @@ impl<'a> Parser<'a> {
     }
 
     fn while_statement(&mut self) -> PResult<Statement> {
-        self.bump();
+        self.next_token();
         eat!(self, TokenType::LeftParen);
         let condition = self.expression()?;
         eat!(self, TokenType::RightParen);
@@ -236,11 +236,11 @@ impl<'a> Parser<'a> {
     }
 
     fn for_statement(&mut self) -> PResult<Statement> {
-        self.bump();
+        self.next_token();
         eat!(self, TokenType::LeftParen);
         let initializer = match self.look_ahead() {
             TokenType::Semicolon => {
-                self.bump();
+                self.next_token();
                 None
             }
             TokenType::Keyword(Keyword::Var) => Some(self.var_decl()?),
@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
     }
 
     fn block(&mut self) -> PResult<Box<[Statement]>> {
-        self.bump();
+        self.next_token();
         let mut statements = vec![];
         while !matches!(self.look_ahead(), TokenType::RightBrace) {
             match self.declaration() {
@@ -360,7 +360,7 @@ impl<'a> Parser<'a> {
                 Some(next_op) if next_op.is_precedent_than(op) => {
                     expr = match next_op {
                         Operator::Ternary => {
-                            self.bump();
+                            self.next_token();
                             let truthy = self.expression()?;
                             eat!(self, TokenType::Colon);
                             Expr::ternary(expr, truthy, self.expr_precedence(next_op)?)
@@ -388,7 +388,9 @@ impl<'a> Parser<'a> {
             loop {
                 arguments.push(self.expression()?);
                 match self.look_ahead() {
-                    TokenType::Comma => self.bump(),
+                    TokenType::Comma => {
+                        self.next_token();
+                    }
                     _ => break,
                 }
             }
