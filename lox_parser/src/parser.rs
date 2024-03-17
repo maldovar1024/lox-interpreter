@@ -3,7 +3,7 @@ use std::mem;
 use crate::{
     ast::{
         expr::{p, Expr, ExprInner, FnCall, Lit},
-        stmt::{Block, Expression, FnDecl, If, Print, Statement, VarDecl, While},
+        stmt::{Block, Expression, FnDecl, If, Print, Return, Statement, VarDecl, While},
     },
     error::{PResult, ParserError},
     lexer::Lexer,
@@ -195,6 +195,7 @@ impl<'a> Parser<'a> {
             TokenType::Keyword(Keyword::If) => self.if_statement(),
             TokenType::Keyword(Keyword::While) => self.while_statement(),
             TokenType::Keyword(Keyword::For) => self.for_statement(),
+            TokenType::Keyword(Keyword::Return) => self.return_statement(),
             _ => self.expression_statement(),
         }
     }
@@ -283,6 +284,22 @@ impl<'a> Parser<'a> {
             }),
             None => inner,
         })
+    }
+
+    fn return_statement(&mut self) -> PResult<Statement> {
+        let token = self.next_token();
+        let expr = if !matches!(self.look_ahead(), TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        eat!(self, TokenType::Semicolon);
+
+        Ok(Statement::Return(Return {
+            span: token.span,
+            expr,
+        }))
     }
 
     fn expression_statement(&mut self) -> PResult<Statement> {

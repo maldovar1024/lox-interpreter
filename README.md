@@ -20,6 +20,7 @@ statement      → exprStmt
                | printStmt
                | whileStmt
                | forStmt
+               | returnStmt
                | block ;
 
 ifStmt         → "if" "(" expression ")" statement
@@ -30,6 +31,8 @@ whileStmt      → "while" "(" expression ")" statement ;
 forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
                  expression? ";"
                  expression? ")" statement ;
+
+returnStmt     → "return" expression? ";" ;
 
 block          → "{" declaration* "}" ;
 

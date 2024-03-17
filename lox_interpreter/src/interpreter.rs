@@ -6,7 +6,7 @@ use std::{
 use lox_parser::{
     ast::{
         expr::{BinaryExpr, BinaryOp, Expr, ExprInner, FnCall, Lit, Ternary, UnaryExpr, UnaryOp},
-        stmt::{Block, FnDecl, If, Print, Statement, VarDecl, While},
+        stmt::{Block, FnDecl, If, Print, Return, Statement, VarDecl, While},
         visit::{walk_expr, walk_stmt, Visitor},
     },
     parser::Ast,
@@ -130,6 +130,15 @@ impl Visitor for Interpreter {
         Ok(Value::Nil)
     }
 
+    fn visit_return(&mut self, return_stmt: &Return) -> Self::Result {
+        let value = match &return_stmt.expr {
+            Some(expr) => walk_expr(self, expr)?,
+            None => Value::Nil,
+        };
+
+        Err(RuntimeError::Return(return_stmt.span.clone(), value).to_box())
+    }
+
     fn visit_fn_call(&mut self, fn_call: &FnCall) -> Self::Result {
         let callee = walk_expr(self, &fn_call.callee)?;
         let mut arguments = Vec::with_capacity(fn_call.arguments.len());
@@ -158,7 +167,13 @@ impl Visitor for Interpreter {
             .to_box());
         }
 
-        f.call(self, arguments)
+        match f.call(self, arguments) {
+            Err(err) => match *err {
+                RuntimeError::Return(_, v) => Ok(v),
+                v => Err(v.to_box())
+            },
+            v => v
+        }
     }
 
     fn visit_literal(&mut self, literal: &Lit) -> Self::Result {

@@ -23,6 +23,8 @@ pub enum RuntimeError {
         got: usize,
         span: Span,
     },
+    #[error("`Return` must be in a function, {0}")]
+    Return(Span, Value),
 }
 
 pub type IResult<T> = Result<T, Box<RuntimeError>>;

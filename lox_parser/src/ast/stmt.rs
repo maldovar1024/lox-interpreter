@@ -1,5 +1,5 @@
 use super::expr::Expr;
-use crate::{ast::visit::Visitor, ast_enum};
+use crate::{ast::visit::Visitor, ast_enum, span::Span};
 
 #[derive(Debug, Clone)]
 pub struct Print {
@@ -42,6 +42,12 @@ pub struct FnDecl {
     pub body: Box<[Statement]>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Return {
+    pub span: Span,
+    pub expr: Option<Expr>,
+}
+
 ast_enum! {
     pub enum Statement {
         visit_print: Print(Print),
@@ -51,5 +57,6 @@ ast_enum! {
         visit_if: If(If),
         visit_while: While(While),
         visit_function: FnDecl(FnDecl),
+        visit_return: Return(Return),
     }
 }
