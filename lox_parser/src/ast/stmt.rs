@@ -1,4 +1,5 @@
 use super::expr::Expr;
+use crate::{ast::visit::Visitor, ast_enum};
 
 #[derive(Debug, Clone)]
 pub struct Print {
@@ -41,13 +42,14 @@ pub struct FnDecl {
     pub body: Box<[Statement]>,
 }
 
-#[derive(Debug, Clone)]
-pub enum Statement {
-    Print(Print),
-    Expression(Expression),
-    Var(VarDecl),
-    Block(Block),
-    If(If),
-    While(While),
-    FnDecl(FnDecl)
+ast_enum! {
+    pub enum Statement {
+        visit_print: Print(Print),
+        visit_expression: Expression(Expression),
+        visit_var_decl: Var(VarDecl),
+        visit_block: Block(Block),
+        visit_if: If(If),
+        visit_while: While(While),
+        visit_function: FnDecl(FnDecl),
+    }
 }

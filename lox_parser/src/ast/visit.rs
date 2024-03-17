@@ -1,7 +1,25 @@
 use super::{
-    expr::{BinaryExpr, Expr, ExprInner, FnCall, Group, Lit, Ternary, UnaryExpr},
+    expr::{BinaryExpr, Expr, FnCall, Group, Lit, Ternary, UnaryExpr},
     stmt::{Block, Expression, FnDecl, If, Print, Statement, VarDecl, While},
 };
+
+#[macro_export]
+macro_rules! ast_enum {
+    (pub enum $enum_name: ident {$($walker: ident: $name: ident($ty: ty)),+ $(,)?}) => {
+        #[derive(Debug, Clone)]
+        pub enum $enum_name {
+            $($name($ty)),+
+        }
+
+        impl $enum_name {
+            pub fn walk<V: Visitor>(&self, visitor: &mut V) -> V::Result {
+                match self {
+                    $($enum_name::$name(v) => visitor.$walker(v)),+
+                }
+            }
+        }
+    };
+}
 
 pub trait Visitor: Sized {
     type Result;
@@ -55,15 +73,7 @@ pub trait Visitor: Sized {
 }
 
 pub fn walk_stmt<V: Visitor>(visitor: &mut V, stmt: &Statement) -> V::Result {
-    match stmt {
-        Statement::Print(p) => visitor.visit_print(p),
-        Statement::Expression(e) => visitor.visit_expression(e),
-        Statement::Var(var_decl) => visitor.visit_var_decl(&var_decl),
-        Statement::Block(block) => visitor.visit_block(block),
-        Statement::If(if_stmt) => visitor.visit_if(if_stmt),
-        Statement::While(while_stmt) => visitor.visit_while(while_stmt),
-        Statement::FnDecl(function) => visitor.visit_function(function),
-    }
+    stmt.walk(visitor)
 }
 
 pub fn walk_print<V: Visitor>(visitor: &mut V, print: &Print) -> V::Result {
@@ -75,15 +85,7 @@ pub fn walk_expression<V: Visitor>(visitor: &mut V, expression: &Expression) -> 
 }
 
 pub fn walk_expr<V: Visitor>(visitor: &mut V, expr: &Expr) -> V::Result {
-    match &expr.expr {
-        ExprInner::Binary(binary) => visitor.visit_binary(binary),
-        ExprInner::Unary(unary) => visitor.visit_unary(unary),
-        ExprInner::Group(group) => visitor.visit_group(group),
-        ExprInner::Literal(value) => visitor.visit_literal(value),
-        ExprInner::Ternary(ternary) => visitor.visit_ternary(ternary),
-        ExprInner::Var(var) => visitor.visit_var(var),
-        ExprInner::FnCall(fn_call) => visitor.visit_fn_call(fn_call),
-    }
+    expr.expr.walk(visitor)
 }
 
 pub fn walk_binary<V: Visitor>(visitor: &mut V, binary: &BinaryExpr) -> V::Result {

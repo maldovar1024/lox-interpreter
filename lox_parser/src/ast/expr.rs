@@ -1,4 +1,6 @@
 use crate::{
+    ast::visit::Visitor,
+    ast_enum,
     span::{Position, Span},
     token::{Keyword, TokenType},
 };
@@ -93,15 +95,16 @@ pub struct FnCall {
     pub arguments: Box<[Expr]>,
 }
 
-#[derive(Debug, Clone)]
-pub enum ExprInner {
-    Binary(BinaryExpr),
-    Unary(UnaryExpr),
-    Ternary(Ternary),
-    Group(Group),
-    Literal(Lit),
-    Var(String),
-    FnCall(FnCall),
+ast_enum! {
+    pub enum ExprInner {
+        visit_binary: Binary(BinaryExpr),
+        visit_unary: Unary(UnaryExpr),
+        visit_group: Group(Group),
+        visit_literal: Literal(Lit),
+        visit_ternary: Ternary(Ternary),
+        visit_var: Var(String),
+        visit_fn_call: FnCall(FnCall),
+    }
 }
 
 #[derive(Debug, Clone)]
