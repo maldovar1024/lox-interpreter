@@ -5,6 +5,8 @@ use crate::{
     token::{Keyword, TokenType},
 };
 
+use super::ident::Ident;
+
 #[inline(always)]
 pub(crate) fn p<T>(x: T) -> Box<T> {
     Box::new(x)
@@ -102,7 +104,7 @@ ast_enum! {
         visit_group: Group(Group),
         visit_literal: Literal(Lit),
         visit_ternary: Ternary(Ternary),
-        visit_var: Var(String),
+        visit_var: Var(Ident),
         visit_fn_call: FnCall(FnCall),
     }
 }
@@ -160,7 +162,7 @@ impl Expr {
         }
     }
 
-    pub(crate) fn var(ident: String, span: Span) -> Self {
+    pub(crate) fn var(ident: Ident, span: Span) -> Self {
         Self {
             expr: ExprInner::Var(ident),
             span,

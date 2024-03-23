@@ -3,6 +3,7 @@ use std::mem;
 use crate::{
     ast::{
         expr::{p, Expr, ExprInner, FnCall, Lit},
+        ident::Ident,
         stmt::{Block, Expression, FnDecl, If, Print, Return, Statement, VarDecl, While},
     },
     error::{PResult, ParserError},
@@ -78,10 +79,10 @@ impl<'a> Parser<'a> {
             .token_type
     }
 
-    fn get_identifier(&mut self) -> PResult<String> {
+    fn get_identifier(&mut self) -> PResult<Ident> {
         let next_token = self.next_token();
         match next_token.token_type {
-            TokenType::Identifier(ident) => Ok(ident),
+            TokenType::Identifier(name) => Ok(Ident::from_name(name)),
             t => Err(ParserError::expect_structure(
                 "identifier",
                 t,
@@ -126,7 +127,7 @@ impl<'a> Parser<'a> {
     fn var_decl(&mut self) -> PResult<Statement> {
         self.next_token();
         let next_token = self.next_token();
-        let ident = match next_token.token_type {
+        let name = match next_token.token_type {
             TokenType::Identifier(ident) => ident,
             t => {
                 return Err(ParserError::expect_structure(
@@ -146,12 +147,15 @@ impl<'a> Parser<'a> {
 
         eat!(self, TokenType::Semicolon);
 
-        Ok(Statement::Var(VarDecl { ident, initializer }))
+        Ok(Statement::Var(VarDecl {
+            ident: Ident::from_name(name),
+            initializer,
+        }))
     }
 
     fn function(&mut self) -> PResult<Statement> {
         self.next_token();
-        let name = self.get_identifier()?;
+        let ident = self.get_identifier()?;
 
         let start = eat!(self, TokenType::LeftParen);
 
@@ -175,18 +179,17 @@ impl<'a> Parser<'a> {
         }
 
         Ok(Statement::FnDecl(FnDecl {
-            name,
+            ident,
             params: parameters.into_boxed_slice(),
             body: self.block()?,
+            num_of_locals: 0,
         }))
     }
 
     fn statement(&mut self) -> PResult<Statement> {
         match self.look_ahead() {
             TokenType::Keyword(Keyword::Print) => self.print_statement(),
-            TokenType::LeftBrace => Ok(Statement::Block(Block {
-                statements: self.block()?,
-            })),
+            TokenType::LeftBrace => Ok(Statement::Block(Block::new(self.block()?))),
             TokenType::Keyword(Keyword::If) => self.if_statement(),
             TokenType::Keyword(Keyword::While) => self.while_statement(),
             TokenType::Keyword(Keyword::For) => self.for_statement(),
@@ -263,20 +266,15 @@ impl<'a> Parser<'a> {
                 span: condition_span,
             }),
             body: match increment {
-                Some(increment) => Box::new(Statement::Block(Block {
-                    statements: Box::new([
-                        body,
-                        Statement::Expression(Expression { expr: increment }),
-                    ]),
-                })),
+                Some(increment) => Box::new(Statement::Block(Block::new(
+                    [body, Statement::Expression(Expression { expr: increment })].into(),
+                ))),
                 None => Box::new(body),
             },
         });
 
         Ok(match initializer {
-            Some(initializer) => Statement::Block(Block {
-                statements: Box::new([initializer, inner]),
-            }),
+            Some(initializer) => Statement::Block(Block::new([initializer, inner].into())),
             None => inner,
         })
     }
@@ -357,7 +355,7 @@ impl<'a> Parser<'a> {
                 next_token.span,
                 self.expr_precedence(Operator::Prefix)?,
             ),
-            TokenType::Identifier(ident) => Expr::var(ident, next_token.span),
+            TokenType::Identifier(name) => Expr::var(Ident::from_name(name), next_token.span),
             t => {
                 return Err(p(ParserError::ExpectStructure {
                     expected: "expression",

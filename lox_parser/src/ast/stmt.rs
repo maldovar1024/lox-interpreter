@@ -1,4 +1,7 @@
-use super::expr::Expr;
+use super::{
+    expr::Expr,
+    ident::{Ident, IdentIndex},
+};
 use crate::{ast::visit::Visitor, ast_enum, span::Span};
 
 #[derive(Debug, Clone)]
@@ -13,13 +16,23 @@ pub struct Expression {
 
 #[derive(Debug, Clone)]
 pub struct VarDecl {
-    pub ident: String,
+    pub ident: Ident,
     pub initializer: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Block {
     pub statements: Box<[Statement]>,
+    pub num_of_locals: IdentIndex,
+}
+
+impl Block {
+    pub(crate) fn new(statements: Box<[Statement]>) -> Self {
+        Self {
+            statements,
+            num_of_locals: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -37,9 +50,10 @@ pub struct While {
 
 #[derive(Debug, Clone)]
 pub struct FnDecl {
-    pub name: String,
-    pub params: Box<[String]>,
+    pub ident: Ident,
+    pub params: Box<[Ident]>,
     pub body: Box<[Statement]>,
+    pub num_of_locals: IdentIndex,
 }
 
 #[derive(Debug, Clone)]

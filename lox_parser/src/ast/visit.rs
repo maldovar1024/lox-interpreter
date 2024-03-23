@@ -1,6 +1,5 @@
 use super::{
-    expr::{BinaryExpr, Expr, FnCall, Group, Lit, Ternary, UnaryExpr},
-    stmt::{Block, Expression, FnDecl, If, Print, Return, Statement, VarDecl, While},
+    expr::{BinaryExpr, Expr, FnCall, Group, Lit, Ternary, UnaryExpr}, ident::Ident, stmt::{Block, Expression, FnDecl, If, Print, Return, Statement, VarDecl, While}
 };
 
 #[macro_export]
@@ -71,7 +70,7 @@ pub trait Visitor: Sized {
 
     fn visit_literal(&mut self, literal: &Lit) -> Self::Result;
 
-    fn visit_var(&mut self, var: &str) -> Self::Result;
+    fn visit_var(&mut self, var: &Ident) -> Self::Result;
 }
 
 pub fn walk_stmt<V: Visitor>(visitor: &mut V, stmt: &Statement) -> V::Result {
