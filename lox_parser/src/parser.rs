@@ -57,7 +57,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        if self.errors.len() > 0 {
+        if !self.errors.is_empty() {
             Err(mem::take(&mut self.errors).into_boxed_slice())
         } else {
             Ok(statements)
@@ -98,21 +98,16 @@ impl<'a> Parser<'a> {
                     self.next_token();
                     return;
                 }
-                TokenType::Keyword(kw)
-                    if matches!(
-                        kw,
-                        Keyword::Class
-                            | Keyword::For
-                            | Keyword::Fun
-                            | Keyword::If
-                            | Keyword::Print
-                            | Keyword::Return
-                            | Keyword::Var
-                            | Keyword::While
-                    ) =>
-                {
-                    return
-                }
+                TokenType::Keyword(
+                    Keyword::Class
+                    | Keyword::For
+                    | Keyword::Fun
+                    | Keyword::If
+                    | Keyword::Print
+                    | Keyword::Return
+                    | Keyword::Var
+                    | Keyword::While,
+                ) => return,
                 _ => {
                     self.next_token();
                 }
@@ -373,7 +368,7 @@ impl<'a> Parser<'a> {
         };
 
         loop {
-            match Operator::from_token(&self.look_ahead()) {
+            match Operator::from_token(self.look_ahead()) {
                 Some(next_op) if next_op.is_precedent_than(op) => {
                     expr = match next_op {
                         Operator::Ternary => {

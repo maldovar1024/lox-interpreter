@@ -60,7 +60,7 @@ impl Interpreter {
         let right = walk_expr(self, &binary.right)?;
         match &binary.left.expr {
             ExprInner::Var(var) => {
-                self.env.borrow_mut().assign(&var, right.clone())?;
+                self.env.borrow_mut().assign(var, right.clone())?;
                 Ok(right)
             }
             _ => Err(RuntimeError::InvalidLeftValue(binary.left.span.to_owned()).to_box()),
@@ -100,6 +100,12 @@ impl Interpreter {
         })();
         self.env = prev;
         result
+    }
+}
+
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -273,7 +279,7 @@ impl Visitor for Interpreter {
         Ok(Value::Nil)
     }
 
-    fn visit_var(&mut self, var: &String) -> Self::Result {
-        self.env.borrow().get(&var)
+    fn visit_var(&mut self, var: &str) -> Self::Result {
+        self.env.borrow().get(var)
     }
 }

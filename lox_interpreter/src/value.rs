@@ -85,7 +85,7 @@ impl Value {
     pub fn as_bool(&self) -> bool {
         match self {
             Value::Number(num) => *num != 0.0,
-            Value::String(s) => s != "",
+            Value::String(s) => !s.is_empty(),
             Value::Bool(b) => *b,
             Value::Nil => false,
             _ => true,

@@ -71,7 +71,7 @@ pub trait Visitor: Sized {
 
     fn visit_literal(&mut self, literal: &Lit) -> Self::Result;
 
-    fn visit_var(&mut self, var: &String) -> Self::Result;
+    fn visit_var(&mut self, var: &str) -> Self::Result;
 }
 
 pub fn walk_stmt<V: Visitor>(visitor: &mut V, stmt: &Statement) -> V::Result {

@@ -20,7 +20,7 @@ fn is_ident_continue(c: char) -> bool {
 }
 
 fn is_digit(c: char) -> bool {
-    matches!(c, '0'..='9')
+    c.is_ascii_digit()
 }
 
 pub struct Lexer<'a> {
@@ -41,9 +41,8 @@ impl<'a> Lexer<'a> {
     }
 
     pub(crate) fn next_token(&mut self) -> Token {
-        match self.skip() {
-            Some(token) => return token,
-            None => {}
+        if let Some(token) = self.skip() {
+            return token
         }
 
         self.update_byte_pos();

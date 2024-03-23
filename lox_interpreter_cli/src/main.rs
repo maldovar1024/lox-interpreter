@@ -1,12 +1,11 @@
 use lox_interpreter::interpret;
-use lox_parser;
 use std::{
     env, fs,
     io::{self, Write},
 };
 
 fn run(src: &str) {
-    match lox_parser::parse(&src) {
+    match lox_parser::parse(src) {
         Ok(ast) => {
             println!("{ast:?}");
             if let Err(err) = interpret(&ast) {
@@ -14,7 +13,7 @@ fn run(src: &str) {
             }
         }
         Err(errors) => {
-            for error in errors.into_iter() {
+            for error in errors.iter() {
                 eprintln!("{error}");
             }
         }
@@ -37,7 +36,7 @@ fn run_interactively() {
 }
 
 fn run_from_file(file_path: &str) {
-    let content = fs::read_to_string(file_path).expect(&format!("Cannot read file `{file_path}`"));
+    let content = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Cannot read file `{file_path}`"));
     run(&content);
 }
 
