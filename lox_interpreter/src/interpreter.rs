@@ -1,4 +1,5 @@
 use std::{
+    mem,
     rc::Rc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -13,13 +14,13 @@ use lox_parser::{
 };
 
 use crate::{
-    environment::Environment,
+    environment::{Env, Environment},
     error::{IResult, RuntimeError},
     value::{Callable, Function, NativeFunction, Value},
 };
 
 pub struct Interpreter {
-    pub(crate) env: Environment,
+    pub(crate) env: Env,
 }
 
 impl Interpreter {
@@ -42,7 +43,9 @@ impl Interpreter {
             })),
         );
 
-        Self { env: global_env }
+        Self {
+            env: Rc::new(global_env.into()),
+        }
     }
 
     pub fn interpret(&mut self, ast: &Ast) -> IResult<Value> {
@@ -57,7 +60,7 @@ impl Interpreter {
         let right = walk_expr(self, &binary.right)?;
         match &binary.left.expr {
             ExprInner::Var(var) => {
-                self.env.assign(&var, right.clone())?;
+                self.env.borrow_mut().assign(&var, right.clone())?;
                 Ok(right)
             }
             _ => Err(RuntimeError::InvalidLeftValue(binary.left.span.to_owned()).to_box()),
@@ -82,11 +85,21 @@ impl Interpreter {
         }
     }
 
-    pub(crate) fn execute_block(&mut self, block: &[Statement]) -> IResult<Value> {
-        for stmt in block.iter() {
-            walk_stmt(self, stmt)?;
-        }
-        Ok(Value::Nil)
+    pub(crate) fn execute_block(
+        &mut self,
+        block: &[Statement],
+        environment: Env,
+    ) -> IResult<Value> {
+        let prev = mem::replace(&mut self.env, environment);
+
+        let result = (|| -> IResult<Value> {
+            for stmt in block.iter() {
+                walk_stmt(self, stmt)?;
+            }
+            Ok(Value::Nil)
+        })();
+        self.env = prev;
+        result
     }
 }
 
@@ -99,10 +112,7 @@ impl Visitor for Interpreter {
     }
 
     fn visit_block(&mut self, block: &Block) -> Self::Result {
-        self.env.start_scope();
-        let result = self.execute_block(&block.statements);
-        self.env.end_scope();
-        result.and(Ok(Value::Nil))
+        self.execute_block(&block.statements, self.env.clone())
     }
 
     fn visit_if(&mut self, if_stmt: &If) -> Self::Result {
@@ -123,9 +133,13 @@ impl Visitor for Interpreter {
     }
 
     fn visit_function(&mut self, function: &FnDecl) -> Self::Result {
-        self.env.define(
+        //! cyclic ref here
+        self.env.borrow_mut().define(
             &function.name,
-            Value::Function(Rc::new(Function(function.to_owned()))),
+            Value::Function(Rc::new(Function {
+                declaration: function.to_owned(),
+                closure: self.env.clone(),
+            })),
         );
         Ok(Value::Nil)
     }
@@ -170,9 +184,9 @@ impl Visitor for Interpreter {
         match f.call(self, arguments) {
             Err(err) => match *err {
                 RuntimeError::Return(_, v) => Ok(v),
-                v => Err(v.to_box())
+                v => Err(v.to_box()),
             },
-            v => v
+            v => v,
         }
     }
 
@@ -255,11 +269,11 @@ impl Visitor for Interpreter {
             Some(expr) => walk_expr(self, expr)?,
             None => Value::Nil,
         };
-        self.env.define(&var_decl.ident, init);
+        self.env.borrow_mut().define(&var_decl.ident, init);
         Ok(Value::Nil)
     }
 
     fn visit_var(&mut self, var: &String) -> Self::Result {
-        self.env.get(&var)
+        self.env.borrow().get(&var)
     }
 }

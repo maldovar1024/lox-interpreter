@@ -2,7 +2,11 @@ use std::{fmt::Display, ptr, rc::Rc};
 
 use lox_parser::ast::{expr::Lit, stmt::FnDecl};
 
-use crate::{error::IResult, interpreter::Interpreter};
+use crate::{
+    environment::{Env, Environment},
+    error::IResult,
+    interpreter::Interpreter,
+};
 
 pub trait Callable {
     fn arity(&self) -> u8;
@@ -34,21 +38,22 @@ impl Callable for NativeFunction {
 }
 
 #[derive(Debug)]
-pub struct Function(pub FnDecl);
+pub struct Function {
+    pub declaration: FnDecl,
+    pub closure: Env,
+}
 
 impl Callable for Function {
     fn arity(&self) -> u8 {
-        self.0.params.len() as u8
+        self.declaration.params.len() as u8
     }
 
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
-        interpreter.env.start_scope();
-        for (name, value) in self.0.params.iter().zip(arguments) {
-            interpreter.env.define(name, value)
+        let mut environment = Environment::new(self.closure.clone());
+        for (name, value) in self.declaration.params.iter().zip(arguments) {
+            environment.define(name, value)
         }
-        let result = interpreter.execute_block(&self.0.body);
-        interpreter.env.end_scope();
-        result.and(Ok(Value::Nil))
+        interpreter.execute_block(&self.declaration.body, Rc::new(environment.into()))
     }
 }
 
@@ -136,7 +141,7 @@ impl Display for Value {
             Value::Bool(b) => write!(f, "{b}"),
             Value::Nil => write!(f, "nil"),
             Value::NativeFunction(fun) => write!(f, "<native function {}>", fun.name),
-            Value::Function(fun) => write!(f, "<function {}>", fun.0.name),
+            Value::Function(fun) => write!(f, "<function {}>", fun.declaration.name),
         }
     }
 }
