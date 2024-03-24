@@ -97,6 +97,12 @@ pub struct FnCall {
     pub arguments: Box<[Expr]>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Get {
+    pub object: Box<Expr>,
+    pub field: String,
+}
+
 ast_enum! {
     pub enum ExprInner {
         visit_binary: Binary(BinaryExpr),
@@ -106,6 +112,7 @@ ast_enum! {
         visit_ternary: Ternary(Ternary),
         visit_var: Var(Ident),
         visit_fn_call: FnCall(FnCall),
+        visit_get: Get(Get),
     }
 }
 
@@ -130,6 +137,16 @@ impl Expr {
                 operator,
                 left: p(left),
                 right: p(right),
+            }),
+        }
+    }
+
+    pub(crate) fn get(object: Self, field: Ident) -> Self {
+        Self {
+            span: object.span.extends_with(&field.span),
+            expr: ExprInner::Get(Get {
+                object: p(object),
+                field: field.name,
             }),
         }
     }

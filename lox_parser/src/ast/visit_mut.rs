@@ -26,7 +26,7 @@ pub trait VisitorMut: Sized {
     fn visit_function(&mut self, function: &mut FnDecl) -> Self::Result;
 
     fn visit_class(&mut self, class: &mut ClassDecl) -> Self::Result;
-  
+
     fn visit_return(&mut self, return_stmt: &mut Return) -> Self::Result;
 
     fn visit_expr(&mut self, expr: &mut Expr) -> Self::Result {
@@ -49,6 +49,10 @@ pub trait VisitorMut: Sized {
     }
 
     fn visit_fn_call(&mut self, fn_call: &mut FnCall) -> Self::Result;
+
+    fn visit_get(&mut self, get: &mut Get) -> Self::Result {
+        walk_expr(self, &mut get.object)
+    }
 
     fn visit_literal(&mut self, literal: &mut Lit) -> Self::Result;
 

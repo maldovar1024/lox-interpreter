@@ -1,4 +1,4 @@
-use std::{fmt::Display, ptr, rc::Rc};
+use std::{collections::HashMap, fmt::Display, ptr, rc::Rc};
 
 use lox_parser::ast::{
     expr::Lit,
@@ -8,7 +8,7 @@ use lox_parser::ast::{
 
 use crate::{
     environment::{Env, Environment},
-    error::IResult,
+    error::{IResult, RuntimeError},
     interpreter::Interpreter,
 };
 
@@ -81,6 +81,7 @@ impl Callable for Rc<Class> {
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
         Ok(Value::Instance(Rc::new(Instance {
             class: Rc::clone(self),
+            fields: Default::default(),
         })))
     }
 }
@@ -88,6 +89,18 @@ impl Callable for Rc<Class> {
 #[derive(Debug)]
 pub struct Instance {
     class: Rc<Class>,
+    fields: HashMap<String, Value>,
+}
+
+impl Instance {
+    pub fn get(&self, field: &str) -> IResult<Value> {
+        self.fields.get(field).cloned().ok_or_else(|| {
+            RuntimeError::UndefinedField {
+                field: field.to_string(),
+            }
+            .to_box()
+        })
+    }
 }
 
 #[derive(Debug, Clone)]

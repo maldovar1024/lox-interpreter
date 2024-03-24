@@ -395,6 +395,7 @@ impl<'a> Parser<'a> {
                             Expr::ternary(expr, truthy, self.expr_precedence(next_op)?)
                         }
                         Operator::FnCall => self.fn_call(expr)?,
+                        Operator::Dot => Expr::get(expr, self.get_identifier()?),
                         _ => Expr::binary(
                             self.next_token().token_type.into(),
                             expr,

@@ -50,6 +50,10 @@ pub trait Visitor: Sized {
 
     fn visit_fn_call(&mut self, fn_call: &FnCall) -> Self::Result;
 
+    fn visit_get(&mut self, get: &Get) -> Self::Result {
+        walk_expr(self, &get.object)
+    }
+
     fn visit_literal(&mut self, literal: &Lit) -> Self::Result;
 
     fn visit_var(&mut self, var: &Ident) -> Self::Result;

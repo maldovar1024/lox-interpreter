@@ -5,6 +5,7 @@ pub(crate) enum Operator {
     And,
     Assign,
     Divide,
+    Dot,
     Equal,
     FnCall,
     Greater,
@@ -37,7 +38,7 @@ impl Operator {
 
     fn precedence(self) -> u8 {
         match self {
-            Operator::FnCall => 15,
+            Operator::FnCall | Operator::Dot => 15,
             Operator::Prefix => 14,
             Operator::Multiply | Operator::Divide => 13,
             Operator::Minus | Operator::Plus => 12,
@@ -66,6 +67,7 @@ impl Operator {
     pub(crate) fn from_token(token_type: &TokenType) -> Option<Self> {
         Some(match token_type {
             TokenType::Equal => Operator::Assign,
+            TokenType::Dot => Operator::Dot,
             TokenType::BangEqual => Operator::NotEqual,
             TokenType::EqualEqual => Operator::Equal,
             TokenType::Greater => Operator::Greater,
