@@ -40,7 +40,7 @@ impl Callable for NativeFunction {
 #[derive(Debug)]
 pub struct Function {
     pub declaration: FnDecl,
-    pub closure: Env,
+    pub closure: Option<Env>,
 }
 
 impl Callable for Function {
@@ -49,11 +49,12 @@ impl Callable for Function {
     }
 
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
-        let mut environment = Environment::new(self.closure.clone());
+        let mut environment =
+            Environment::new(self.declaration.num_of_locals, self.closure.clone());
         for (name, value) in self.declaration.params.iter().zip(arguments) {
-            environment.define(name, value)
+            environment.assign(name.target.unwrap(), value)
         }
-        interpreter.execute_block(&self.declaration.body, Rc::new(environment.into()))
+        interpreter.execute_block(&self.declaration.body, environment)
     }
 }
 
@@ -141,7 +142,7 @@ impl Display for Value {
             Value::Bool(b) => write!(f, "{b}"),
             Value::Nil => write!(f, "nil"),
             Value::NativeFunction(fun) => write!(f, "<native function {}>", fun.name),
-            Value::Function(fun) => write!(f, "<function {}>", fun.declaration.name),
+            Value::Function(fun) => write!(f, "<function {}>", fun.declaration.ident),
         }
     }
 }

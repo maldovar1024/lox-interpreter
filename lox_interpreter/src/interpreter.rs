@@ -7,6 +7,7 @@ use std::{
 use lox_parser::{
     ast::{
         expr::{BinaryExpr, BinaryOp, Expr, ExprInner, FnCall, Lit, Ternary, UnaryExpr, UnaryOp},
+        ident::Ident,
         stmt::{Block, FnDecl, If, Print, Return, Statement, VarDecl, While},
         visit::{walk_expr, walk_stmt, Visitor},
     },
@@ -14,18 +15,19 @@ use lox_parser::{
 };
 
 use crate::{
-    environment::{Env, Environment},
+    environment::{Env, Environment, GlobalEnvironment},
     error::{IResult, RuntimeError},
     value::{Callable, Function, NativeFunction, Value},
 };
 
 pub struct Interpreter {
-    pub(crate) env: Env,
+    env: Option<Env>,
+    global_env: GlobalEnvironment,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        let mut global_env = Environment::default();
+        let mut global_env = GlobalEnvironment::default();
 
         global_env.define(
             "clock",
@@ -44,7 +46,8 @@ impl Interpreter {
         );
 
         Self {
-            env: Rc::new(global_env.into()),
+            env: None,
+            global_env,
         }
     }
 
@@ -55,12 +58,33 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
+    fn set_var(&mut self, ident: &Ident, value: Value) -> IResult<()> {
+        match ident.target {
+            Some(target) => {
+                self.env
+                    .as_deref()
+                    .unwrap()
+                    .borrow_mut()
+                    .assign(target, value);
+                Ok(())
+            }
+            None => self.global_env.assign(&ident.name, value),
+        }
+    }
+
+    fn get_var(&self, ident: &Ident) -> IResult<Value> {
+        match ident.target {
+            Some(target) => Ok(self.env.as_deref().unwrap().borrow().get(target)),
+            None => self.global_env.get(&ident.name),
+        }
+    }
+
     fn assign(&mut self, binary: &BinaryExpr) -> IResult<Value> {
         assert!(matches!(binary.operator, BinaryOp::Assign));
         let right = walk_expr(self, &binary.right)?;
         match &binary.left.expr {
-            ExprInner::Var(var) => {
-                self.env.borrow_mut().assign(var, right.clone())?;
+            ExprInner::Var(ident) => {
+                self.set_var(ident, right.clone())?;
                 Ok(right)
             }
             _ => Err(RuntimeError::InvalidLeftValue(binary.left.span.to_owned()).to_box()),
@@ -88,9 +112,9 @@ impl Interpreter {
     pub(crate) fn execute_block(
         &mut self,
         block: &[Statement],
-        environment: Env,
+        environment: Environment,
     ) -> IResult<Value> {
-        let prev = mem::replace(&mut self.env, environment);
+        let prev = mem::replace(&mut self.env, Some(Rc::new(environment.into())));
 
         let result = (|| -> IResult<Value> {
             for stmt in block.iter() {
@@ -118,7 +142,10 @@ impl Visitor for Interpreter {
     }
 
     fn visit_block(&mut self, block: &Block) -> Self::Result {
-        self.execute_block(&block.statements, self.env.clone())
+        self.execute_block(
+            &block.statements,
+            Environment::new(block.num_of_locals, self.env.clone()),
+        )
     }
 
     fn visit_if(&mut self, if_stmt: &If) -> Self::Result {
@@ -140,13 +167,13 @@ impl Visitor for Interpreter {
 
     fn visit_function(&mut self, function: &FnDecl) -> Self::Result {
         //! cyclic ref here
-        self.env.borrow_mut().define(
-            &function.name,
+        self.set_var(
+            &function.ident,
             Value::Function(Rc::new(Function {
                 declaration: function.to_owned(),
                 closure: self.env.clone(),
             })),
-        );
+        )?;
         Ok(Value::Nil)
     }
 
@@ -275,11 +302,11 @@ impl Visitor for Interpreter {
             Some(expr) => walk_expr(self, expr)?,
             None => Value::Nil,
         };
-        self.env.borrow_mut().define(&var_decl.ident, init);
+        self.set_var(&var_decl.ident, init)?;
         Ok(Value::Nil)
     }
 
-    fn visit_var(&mut self, var: &str) -> Self::Result {
-        self.env.borrow().get(var)
+    fn visit_var(&mut self, var: &Ident) -> Self::Result {
+        self.get_var(var)
     }
 }
