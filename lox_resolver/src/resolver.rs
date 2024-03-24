@@ -5,7 +5,7 @@ use lox_parser::{
         expr::*,
         ident::{Ident, IdentIndex, IdentTarget},
         stmt::*,
-        visit_mut::{walk_binary, walk_expr, walk_stmt, VisitorMut},
+        visit_mut::{walk_expr, walk_stmt, VisitorMut},
     },
     parser::Ast,
     span::Span,
@@ -190,17 +190,5 @@ impl VisitorMut for Resolver {
 
     fn visit_var(&mut self, var: &mut Ident) -> Self::Result {
         self.get(var);
-    }
-
-    fn visit_binary(&mut self, binary: &mut BinaryExpr) -> Self::Result {
-        walk_binary(self, binary);
-        if matches!(binary.operator, BinaryOp::Assign) {
-            if let ExprInner::Var(var) = &mut binary.left.expr {
-                self.get(var);
-            } else {
-                self.errors
-                    .push(ResolverError::InvalidLeftValue(binary.left.span.clone()));
-            }
-        }
     }
 }

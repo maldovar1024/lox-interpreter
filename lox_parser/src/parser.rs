@@ -387,17 +387,23 @@ impl<'a> Parser<'a> {
         loop {
             match Operator::from_token(self.look_ahead()) {
                 Some(next_op) if next_op.is_precedent_than(op) => {
+                    let next_token = self.next_token();
                     expr = match next_op {
                         Operator::Ternary => {
-                            self.next_token();
                             let truthy = self.expression()?;
                             eat!(self, TokenType::Colon);
                             Expr::ternary(expr, truthy, self.expr_precedence(next_op)?)
                         }
+                        Operator::Assign => match expr.expr {
+                            ExprInner::Var(ident) => {
+                                Expr::assign(ident, self.expr_precedence(next_op)?)
+                            }
+                            _ => return Err(Box::new(ParserError::InvalidLeftValue(expr.span))),
+                        },
                         Operator::FnCall => self.fn_call(expr)?,
                         Operator::Dot => Expr::get(expr, self.get_identifier()?),
                         _ => Expr::binary(
-                            self.next_token().token_type.into(),
+                            next_token.token_type.into(),
                             expr,
                             self.expr_precedence(next_op)?,
                         ),
@@ -411,7 +417,6 @@ impl<'a> Parser<'a> {
     }
 
     fn fn_call(&mut self, callee: Expr) -> PResult<Expr> {
-        eat!(self, TokenType::LeftParen);
         let mut arguments = vec![];
 
         if !matches!(self.look_ahead(), TokenType::RightParen) {

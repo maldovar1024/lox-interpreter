@@ -14,6 +14,8 @@ pub enum ParserError {
     },
     #[error("{0}: too many parameters")]
     TooManyParameters(Span),
+    #[error("Invalid left value in assignment, {0}")]
+    InvalidLeftValue(Span),
 }
 
 impl ParserError {

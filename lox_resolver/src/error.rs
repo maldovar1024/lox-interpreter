@@ -13,6 +13,4 @@ pub enum ResolverError {
     },
     #[error("{0}: unused variable `{1}`")]
     UnusedVar(Span, String),
-    #[error("{0}:iInvalid left value in assignment")]
-    InvalidLeftValue(Span),
 }

@@ -17,8 +17,6 @@ pub enum RuntimeError {
     UndefinedField { field: String },
     #[error("Cannot read field of type {target_type}, reading {field}")]
     InvalidFieldTarget { target_type: &'static str, field: String },
-    #[error("Invalid left value in assignment, {0}")]
-    InvalidLeftValue(Span),
     #[error("{target} is not callable, {span}")]
     NotCallable { target: String, span: Span },
     #[error("Expected {expected} arguments. but got {got}, {span}")]

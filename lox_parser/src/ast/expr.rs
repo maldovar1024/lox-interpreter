@@ -15,7 +15,6 @@ pub(crate) fn p<T>(x: T) -> Box<T> {
 #[derive(Debug, Clone)]
 pub enum BinaryOp {
     And,
-    Assign,
     Divide,
     Equal,
     Greater,
@@ -32,7 +31,6 @@ pub enum BinaryOp {
 impl From<TokenType> for BinaryOp {
     fn from(token_type: TokenType) -> Self {
         match token_type {
-            TokenType::Equal => Self::Assign,
             TokenType::BangEqual => Self::NotEqual,
             TokenType::EqualEqual => Self::Equal,
             TokenType::Greater => Self::Greater,
@@ -92,9 +90,23 @@ pub struct Group {
 }
 
 #[derive(Debug, Clone)]
+pub enum Lit {
+    Number(f64),
+    String(String),
+    Bool(bool),
+    Nil,
+}
+
+#[derive(Debug, Clone)]
 pub struct FnCall {
     pub callee: Box<Expr>,
     pub arguments: Box<[Expr]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Assign {
+    pub ident: Ident,
+    pub value: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -110,6 +122,7 @@ ast_enum! {
         visit_group: Group(Group),
         visit_literal: Literal(Lit),
         visit_ternary: Ternary(Ternary),
+        visit_assign: Assign(Assign),
         visit_var: Var(Ident),
         visit_fn_call: FnCall(FnCall),
         visit_get: Get(Get),
@@ -137,6 +150,16 @@ impl Expr {
                 operator,
                 left: p(left),
                 right: p(right),
+            }),
+        }
+    }
+
+    pub(crate) fn assign(ident: Ident, value: Expr) -> Self {
+        Self {
+            span: ident.span.extends_with(&value.span),
+            expr: ExprInner::Assign(Assign {
+                ident,
+                value: p(value),
             }),
         }
     }
@@ -185,12 +208,4 @@ impl Expr {
             span,
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Lit {
-    Number(f64),
-    String(String),
-    Bool(bool),
-    Nil,
 }

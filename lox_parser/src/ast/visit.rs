@@ -40,8 +40,14 @@ pub trait Visitor: Sized {
     fn visit_unary(&mut self, unary: &UnaryExpr) -> Self::Result {
         walk_unary(self, unary)
     }
+
     fn visit_ternary(&mut self, ternary: &Ternary) -> Self::Result {
         walk_ternary(self, ternary)
+    }
+
+    fn visit_assign(&mut self, assign: &Assign) -> Self::Result {
+        walk_var(self, &assign.ident);
+        walk_expr(self, &assign.value)
     }
 
     fn visit_group(&mut self, group: &Group) -> Self::Result {
@@ -92,4 +98,8 @@ pub fn walk_ternary<V: Visitor>(visitor: &mut V, ternary: &Ternary) -> V::Result
 
 pub fn walk_group<V: Visitor>(visitor: &mut V, group: &Group) -> V::Result {
     visitor.visit_expr(&group.expr)
+}
+
+pub fn walk_var<V: Visitor>(visitor: &mut V, var: &Ident) -> V::Result {
+    visitor.visit_var(var)
 }

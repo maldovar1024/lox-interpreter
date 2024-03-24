@@ -90,28 +90,6 @@ impl Interpreter {
         }
     }
 
-    fn assign(&mut self, binary: &BinaryExpr) -> IResult<Value> {
-        assert!(matches!(binary.operator, BinaryOp::Assign));
-        let right = walk_expr(self, &binary.right)?;
-        match &binary.left.expr {
-            ExprInner::Var(ident) => {
-                self.set_var(ident, right.clone())?;
-                Ok(right)
-            }
-            _ => Err(RuntimeError::InvalidLeftValue(binary.left.span.to_owned()).to_box()),
-        }
-    }
-
-    fn logical_expr(&mut self, binary: &BinaryExpr) -> IResult<Value> {
-        let left = walk_expr(self, &binary.left)?;
-
-        match binary.operator {
-            BinaryOp::And if !left.as_bool() => Ok(left),
-            BinaryOp::Or if left.as_bool() => Ok(left),
-            _ => walk_expr(self, &binary.right),
-        }
-    }
-
     fn get_number(&mut self, expr: &Expr) -> IResult<f64> {
         let value = walk_expr(self, expr)?;
         match value {
@@ -255,17 +233,17 @@ impl Visitor for Interpreter {
         }
     }
 
+    fn visit_assign(&mut self, assign: &Assign) -> Self::Result {
+        let value = walk_expr(self, &assign.value)?;
+        self.set_var(&assign.ident, value.clone())?;
+        Ok(value)
+    }
+
     fn visit_literal(&mut self, literal: &Lit) -> Self::Result {
         Ok(literal.clone().into())
     }
 
     fn visit_binary(&mut self, binary: &BinaryExpr) -> Self::Result {
-        match binary.operator {
-            BinaryOp::Assign => return self.assign(binary),
-            BinaryOp::And | BinaryOp::Or => return self.logical_expr(binary),
-            _ => {}
-        }
-
         let BinaryExpr {
             operator,
             left,
@@ -309,7 +287,14 @@ impl Visitor for Interpreter {
             BinaryOp::GreaterEqual => (self.get_number(left)? >= self.get_number(right)?).into(),
             BinaryOp::Less => (self.get_number(left)? < self.get_number(right)?).into(),
             BinaryOp::LessEqual => (self.get_number(left)? <= self.get_number(right)?).into(),
-            _ => unreachable!(),
+            BinaryOp::And | BinaryOp::Or => {
+                let left = walk_expr(self, &binary.left)?;
+                match binary.operator {
+                    BinaryOp::And if !left.as_bool() => left,
+                    BinaryOp::Or if left.as_bool() => left,
+                    _ => walk_expr(self, &binary.right)?,
+                }
+            }
         })
     }
 
