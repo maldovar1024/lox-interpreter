@@ -67,6 +67,12 @@ pub struct Return {
     pub expr: Option<Expr>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ClassDecl {
+    pub ident: Ident,
+    pub methods: Box<[FnDecl]>,
+}
+
 ast_enum! {
     pub enum Statement {
         visit_print: Print(Print),
@@ -77,5 +83,6 @@ ast_enum! {
         visit_while: While(While),
         visit_function: FnDecl(FnDecl),
         visit_return: Return(Return),
+        visit_class: ClassDecl(ClassDecl),
     }
 }

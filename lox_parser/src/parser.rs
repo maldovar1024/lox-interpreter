@@ -1,11 +1,7 @@
 use std::mem;
 
 use crate::{
-    ast::{
-        expr::{p, Expr, ExprInner, FnCall, Lit},
-        ident::Ident,
-        stmt::{Block, Expression, FnDecl, If, Print, Return, Statement, VarDecl, While},
-    },
+    ast::{expr::*, ident::Ident, stmt::*},
     error::{PResult, ParserError},
     lexer::Lexer,
     precedence::Operator,
@@ -119,7 +115,11 @@ impl<'a> Parser<'a> {
     fn declaration(&mut self) -> PResult<Statement> {
         match self.look_ahead() {
             TokenType::Keyword(Keyword::Var) => self.var_decl(),
-            TokenType::Keyword(Keyword::Fun) => self.function(),
+            TokenType::Keyword(Keyword::Fun) => {
+                self.next_token();
+                Ok(Statement::FnDecl(self.function()?))
+            }
+            TokenType::Keyword(Keyword::Class) => self.class(),
             _ => self.statement(),
         }
     }
@@ -153,8 +153,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn function(&mut self) -> PResult<Statement> {
-        self.next_token();
+    fn function(&mut self) -> PResult<FnDecl> {
         let ident = self.get_identifier()?;
 
         let start = eat!(self, TokenType::LeftParen);
@@ -178,11 +177,28 @@ impl<'a> Parser<'a> {
                 .push(ParserError::TooManyParameters(start.extends_with(&end)));
         }
 
-        Ok(Statement::FnDecl(FnDecl {
+        Ok(FnDecl {
             ident,
             params: parameters.into_boxed_slice(),
             body: self.block()?,
             num_of_locals: 0,
+        })
+    }
+
+    fn class(&mut self) -> PResult<Statement> {
+        self.next_token();
+        let ident = self.get_identifier()?;
+
+        eat!(self, TokenType::LeftBrace);
+        let mut methods = vec![];
+        while !matches!(self.look_ahead(), TokenType::RightBrace) {
+            methods.push(self.function()?);
+        }
+        eat!(self, TokenType::RightBrace);
+
+        Ok(Statement::ClassDecl(ClassDecl {
+            ident,
+            methods: methods.into_boxed_slice(),
         }))
     }
 

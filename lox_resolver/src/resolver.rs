@@ -169,6 +169,10 @@ impl VisitorMut for Resolver {
         function.num_of_locals = self.end_scope();
     }
 
+    fn visit_class(&mut self, class: &mut ClassDecl) -> Self::Result {
+        self.declare(&mut class.ident, true);
+    }
+
     fn visit_return(&mut self, return_stmt: &mut Return) -> Self::Result {
         if let Some(expr) = &mut return_stmt.expr {
             walk_expr(self, expr);

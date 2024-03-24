@@ -6,9 +6,9 @@ use std::{
 
 use lox_parser::{
     ast::{
-        expr::{BinaryExpr, BinaryOp, Expr, ExprInner, FnCall, Lit, Ternary, UnaryExpr, UnaryOp},
+        expr::*,
         ident::{Ident, IdentTarget},
-        stmt::{Block, FnDecl, If, Print, Return, Statement, VarDecl, While},
+        stmt::*,
         visit::{walk_expr, walk_stmt, Visitor},
     },
     parser::Ast,
@@ -17,7 +17,7 @@ use lox_parser::{
 use crate::{
     environment::{Env, Environment, GlobalEnvironment},
     error::{IResult, RuntimeError},
-    value::{Callable, Function, NativeFunction, Value},
+    value::{Callable, Class, Function, NativeFunction, Value},
 };
 
 pub struct Interpreter {
@@ -188,6 +188,14 @@ impl Visitor for Interpreter {
         Ok(Value::Nil)
     }
 
+    fn visit_class(&mut self, class: &ClassDecl) -> Self::Result {
+        self.declare_var(
+            &class.ident,
+            Value::Class(Rc::new(Class::new(class.clone()))),
+        );
+        Ok(Value::Nil)
+    }
+
     fn visit_return(&mut self, return_stmt: &Return) -> Self::Result {
         let value = match &return_stmt.expr {
             Some(expr) => walk_expr(self, expr)?,
@@ -207,6 +215,7 @@ impl Visitor for Interpreter {
         let f: &dyn Callable = match callee {
             Value::NativeFunction(ref f) => f.as_ref(),
             Value::Function(ref f) => f.as_ref(),
+            Value::Class(ref class) => class,
             _ => {
                 return Err(RuntimeError::NotCallable {
                     target: callee.to_string(),

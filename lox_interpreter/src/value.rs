@@ -1,6 +1,10 @@
 use std::{fmt::Display, ptr, rc::Rc};
 
-use lox_parser::ast::{expr::Lit, stmt::FnDecl};
+use lox_parser::ast::{
+    expr::Lit,
+    ident::Ident,
+    stmt::{ClassDecl, FnDecl},
+};
 
 use crate::{
     environment::{Env, Environment},
@@ -58,6 +62,34 @@ impl Callable for Function {
     }
 }
 
+#[derive(Debug)]
+pub struct Class {
+    pub ident: Ident,
+}
+
+impl Class {
+    pub fn new(class: ClassDecl) -> Self {
+        Self { ident: class.ident }
+    }
+}
+
+impl Callable for Rc<Class> {
+    fn arity(&self) -> u8 {
+        0
+    }
+
+    fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
+        Ok(Value::Instance(Rc::new(Instance {
+            class: Rc::clone(self),
+        })))
+    }
+}
+
+#[derive(Debug)]
+pub struct Instance {
+    class: Rc<Class>,
+}
+
 #[derive(Debug, Clone)]
 pub enum Value {
     Number(f64),
@@ -66,6 +98,8 @@ pub enum Value {
     Nil,
     NativeFunction(Rc<NativeFunction>),
     Function(Rc<Function>),
+    Class(Rc<Class>),
+    Instance(Rc<Instance>),
 }
 
 impl PartialEq for Value {
@@ -76,6 +110,8 @@ impl PartialEq for Value {
             (Self::Bool(b1), Self::Bool(b2)) => b1 == b2,
             (Self::NativeFunction(f1), Self::NativeFunction(f2)) => f1 == f2,
             (Self::Function(f1), Self::Function(f2)) => ptr::eq(f1, f2),
+            (Self::Class(f1), Self::Class(f2)) => ptr::eq(f1, f2),
+            (Self::Instance(f1), Self::Instance(f2)) => ptr::eq(f1, f2),
             (Self::Nil, Self::Nil) => true,
             _ => false,
         }
@@ -101,6 +137,8 @@ impl Value {
             Value::Nil => "nil",
             Value::NativeFunction(_) => "native function",
             Value::Function(_) => "function",
+            Value::Class(_) => "class",
+            Value::Instance(_) => "instance",
         }
     }
 }
@@ -143,6 +181,8 @@ impl Display for Value {
             Value::Nil => write!(f, "nil"),
             Value::NativeFunction(fun) => write!(f, "<native function {}>", fun.name),
             Value::Function(fun) => write!(f, "<function {}>", fun.declaration.ident),
+            Value::Class(class) => write!(f, "<class {}>", class.ident),
+            Value::Instance(instance) => write!(f, "<{} instance>", instance.class.ident),
         }
     }
 }

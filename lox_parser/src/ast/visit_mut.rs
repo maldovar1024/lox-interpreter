@@ -25,6 +25,8 @@ pub trait VisitorMut: Sized {
 
     fn visit_function(&mut self, function: &mut FnDecl) -> Self::Result;
 
+    fn visit_class(&mut self, class: &mut ClassDecl) -> Self::Result;
+  
     fn visit_return(&mut self, return_stmt: &mut Return) -> Self::Result;
 
     fn visit_expr(&mut self, expr: &mut Expr) -> Self::Result {
