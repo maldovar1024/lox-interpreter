@@ -1,8 +1,13 @@
-use super::{
-    expr::Expr,
-    ident::{Ident, IdentIndex},
+use crate::{
+    ast::{
+        expr::Expr,
+        ident::{Ident, IdentIndex},
+        visit::Visitor,
+        visit_mut::VisitorMut,
+    },
+    ast_enum,
+    span::Span,
 };
-use crate::{ast::visit::Visitor, ast_enum, span::Span};
 
 #[derive(Debug, Clone)]
 pub struct Print {

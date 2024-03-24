@@ -1,5 +1,5 @@
 use crate::{
-    ast::visit::Visitor,
+    ast::{visit::Visitor, visit_mut::VisitorMut},
     ast_enum,
     span::{Position, Span},
     token::{Keyword, TokenType},

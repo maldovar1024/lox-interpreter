@@ -1,24 +1,4 @@
-use super::{
-    expr::{BinaryExpr, Expr, FnCall, Group, Lit, Ternary, UnaryExpr}, ident::Ident, stmt::{Block, Expression, FnDecl, If, Print, Return, Statement, VarDecl, While}
-};
-
-#[macro_export]
-macro_rules! ast_enum {
-    (pub enum $enum_name: ident {$($walker: ident: $name: ident($ty: ty)),+ $(,)?}) => {
-        #[derive(Debug, Clone)]
-        pub enum $enum_name {
-            $($name($ty)),+
-        }
-
-        impl $enum_name {
-            pub fn walk<V: Visitor>(&self, visitor: &mut V) -> V::Result {
-                match self {
-                    $($enum_name::$name(v) => visitor.$walker(v)),+
-                }
-            }
-        }
-    };
-}
+use super::{expr::*, ident::Ident, stmt::*};
 
 pub trait Visitor: Sized {
     type Result;
