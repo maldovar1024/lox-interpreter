@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::span::Span;
+
 pub type IdentIndex = u16;
 
 #[derive(Debug, Clone, Copy)]
@@ -12,6 +14,7 @@ pub struct IdentTarget {
 pub struct Ident {
     pub name: String,
     pub target: Option<IdentTarget>,
+    pub span: Span,
 }
 
 impl Display for Ident {
@@ -21,10 +24,11 @@ impl Display for Ident {
 }
 
 impl Ident {
-    pub(crate) fn from_name(name: String) -> Self {
+    pub(crate) fn from_name(name: String, span: Span) -> Self {
         Self {
             name,
             target: None,
+            span,
         }
     }
 }

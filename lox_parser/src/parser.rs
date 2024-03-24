@@ -82,7 +82,7 @@ impl<'a> Parser<'a> {
     fn get_identifier(&mut self) -> PResult<Ident> {
         let next_token = self.next_token();
         match next_token.token_type {
-            TokenType::Identifier(name) => Ok(Ident::from_name(name)),
+            TokenType::Identifier(name) => Ok(Ident::from_name(name, next_token.span)),
             t => Err(ParserError::expect_structure(
                 "identifier",
                 t,
@@ -148,7 +148,7 @@ impl<'a> Parser<'a> {
         eat!(self, TokenType::Semicolon);
 
         Ok(Statement::Var(VarDecl {
-            ident: Ident::from_name(name),
+            ident: Ident::from_name(name, next_token.span),
             initializer,
         }))
     }
@@ -355,7 +355,10 @@ impl<'a> Parser<'a> {
                 next_token.span,
                 self.expr_precedence(Operator::Prefix)?,
             ),
-            TokenType::Identifier(name) => Expr::var(Ident::from_name(name), next_token.span),
+            TokenType::Identifier(name) => Expr::var(
+                Ident::from_name(name, next_token.span.clone()),
+                next_token.span,
+            ),
             t => {
                 return Err(p(ParserError::ExpectStructure {
                     expected: "expression",
