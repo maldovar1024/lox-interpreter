@@ -7,7 +7,7 @@ use std::{
 use lox_parser::{
     ast::{
         expr::{BinaryExpr, BinaryOp, Expr, ExprInner, FnCall, Lit, Ternary, UnaryExpr, UnaryOp},
-        ident::Ident,
+        ident::{Ident, IdentTarget},
         stmt::{Block, FnDecl, If, Print, Return, Statement, VarDecl, While},
         visit::{walk_expr, walk_stmt, Visitor},
     },
@@ -58,14 +58,25 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
+    fn assign_to(&mut self, target: IdentTarget, value: Value) {
+        self.env
+            .as_deref()
+            .unwrap()
+            .borrow_mut()
+            .assign(target, value)
+    }
+
+    fn declare_var(&mut self, ident: &Ident, value: Value) {
+        match ident.target {
+            Some(target) => self.assign_to(target, value),
+            None => self.global_env.define(&ident.name, value),
+        }
+    }
+
     fn set_var(&mut self, ident: &Ident, value: Value) -> IResult<()> {
         match ident.target {
             Some(target) => {
-                self.env
-                    .as_deref()
-                    .unwrap()
-                    .borrow_mut()
-                    .assign(target, value);
+                self.assign_to(target, value);
                 Ok(())
             }
             None => self.global_env.assign(&ident.name, value),
@@ -167,13 +178,13 @@ impl Visitor for Interpreter {
 
     fn visit_function(&mut self, function: &FnDecl) -> Self::Result {
         //! cyclic ref here
-        self.set_var(
+        self.declare_var(
             &function.ident,
             Value::Function(Rc::new(Function {
                 declaration: function.to_owned(),
                 closure: self.env.clone(),
             })),
-        )?;
+        );
         Ok(Value::Nil)
     }
 
@@ -302,7 +313,7 @@ impl Visitor for Interpreter {
             Some(expr) => walk_expr(self, expr)?,
             None => Value::Nil,
         };
-        self.set_var(&var_decl.ident, init)?;
+        self.declare_var(&var_decl.ident, init);
         Ok(Value::Nil)
     }
 

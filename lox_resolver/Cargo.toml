@@ -1,5 +1,5 @@
 [package]
-name = "lox_interpreter_cli"
+name = "lox_resolver"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,5 +7,4 @@ edition = "2021"
 
 [dependencies]
 lox_parser = { path = "../lox_parser" }
-lox_interpreter = { path = "../lox_interpreter" }
-lox_resolver = { path = "../lox_resolver" }
+thiserror = "1.0.57"
