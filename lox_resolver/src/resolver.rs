@@ -171,6 +171,9 @@ impl VisitorMut for Resolver {
 
     fn visit_class(&mut self, class: &mut ClassDecl) -> Self::Result {
         self.declare(&mut class.ident, true);
+        for method in class.methods.iter_mut() {
+            self.visit_function(method);
+        }
     }
 
     fn visit_return(&mut self, return_stmt: &mut Return) -> Self::Result {
