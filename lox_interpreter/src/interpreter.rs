@@ -224,11 +224,25 @@ impl Visitor for Interpreter {
     fn visit_get(&mut self, get: &Get) -> Self::Result {
         let object = walk_expr(self, &get.object)?;
         if let Value::Instance(instance) = object {
-            instance.get(&get.field)
+            instance.borrow().get(&get.field)
         } else {
             Err(Box::new(RuntimeError::InvalidFieldTarget {
                 target_type: object.type_name(),
                 field: get.field.to_string(),
+            }))
+        }
+    }
+
+    fn visit_set(&mut self, Set { target, value }: &Set) -> Self::Result {
+        let object = walk_expr(self, &target.object)?;
+        if let Value::Instance(instance) = object {
+            let value = walk_expr(self, value)?;
+            instance.borrow_mut().set(target.field.to_string(), value.clone());
+            Ok(value)
+        } else {
+            Err(Box::new(RuntimeError::InvalidFieldTarget {
+                target_type: object.type_name(),
+                field: target.field.to_string(),
             }))
         }
     }

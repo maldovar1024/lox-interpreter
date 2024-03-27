@@ -60,6 +60,11 @@ pub trait VisitorMut: Sized {
         walk_expr(self, &mut get.object)
     }
 
+    fn visit_set(&mut self, set: &mut Set) -> Self::Result {
+        self.visit_get(&mut set.target);
+        walk_expr(self, &mut set.value)
+    }
+
     fn visit_literal(&mut self, literal: &mut Lit) -> Self::Result;
 
     fn visit_var(&mut self, var: &mut Ident) -> Self::Result;

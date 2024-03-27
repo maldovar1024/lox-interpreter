@@ -115,6 +115,12 @@ pub struct Get {
     pub field: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct Set {
+    pub target: Get,
+    pub value: Box<Expr>,
+}
+
 ast_enum! {
     pub enum ExprInner {
         visit_binary: Binary(BinaryExpr),
@@ -126,6 +132,7 @@ ast_enum! {
         visit_var: Var(Ident),
         visit_fn_call: FnCall(FnCall),
         visit_get: Get(Get),
+        visit_set: Set(Set),
     }
 }
 
@@ -170,6 +177,16 @@ impl Expr {
             expr: ExprInner::Get(Get {
                 object: p(object),
                 field: field.name,
+            }),
+        }
+    }
+
+    pub(crate) fn set(get: Get, span: Span, value: Expr) -> Self {
+        Self {
+            span: span.extends_with(&value.span),
+            expr: ExprInner::Set(Set {
+                target: get,
+                value: p(value),
             }),
         }
     }

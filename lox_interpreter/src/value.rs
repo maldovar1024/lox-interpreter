@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, ptr, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Display, ptr, rc::Rc};
 
 use lox_parser::ast::{
     expr::Lit,
@@ -79,10 +79,10 @@ impl Callable for Rc<Class> {
     }
 
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
-        Ok(Value::Instance(Rc::new(Instance {
+        Ok(Value::Instance(Rc::new(RefCell::new(Instance {
             class: Rc::clone(self),
             fields: Default::default(),
-        })))
+        }))))
     }
 }
 
@@ -101,6 +101,10 @@ impl Instance {
             .to_box()
         })
     }
+
+    pub fn set(&mut self, field: String, value: Value) {
+        self.fields.insert(field, value);
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -112,7 +116,7 @@ pub enum Value {
     NativeFunction(Rc<NativeFunction>),
     Function(Rc<Function>),
     Class(Rc<Class>),
-    Instance(Rc<Instance>),
+    Instance(Rc<RefCell<Instance>>),
 }
 
 impl PartialEq for Value {
@@ -195,7 +199,7 @@ impl Display for Value {
             Value::NativeFunction(fun) => write!(f, "<native function {}>", fun.name),
             Value::Function(fun) => write!(f, "<function {}>", fun.declaration.ident),
             Value::Class(class) => write!(f, "<class {}>", class.ident),
-            Value::Instance(instance) => write!(f, "<{} instance>", instance.class.ident),
+            Value::Instance(instance) => write!(f, "<{} instance>", instance.borrow().class.ident),
         }
     }
 }

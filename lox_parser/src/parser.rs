@@ -398,6 +398,9 @@ impl<'a> Parser<'a> {
                             ExprInner::Var(ident) => {
                                 Expr::assign(ident, self.expr_precedence(next_op)?)
                             }
+                            ExprInner::Get(get) => {
+                                Expr::set(get, expr.span, self.expr_precedence(next_op)?)
+                            }
                             _ => return Err(Box::new(ParserError::InvalidLeftValue(expr.span))),
                         },
                         Operator::FnCall => self.fn_call(expr)?,
