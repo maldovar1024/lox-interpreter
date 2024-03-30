@@ -120,8 +120,25 @@ impl Resolver {
         self.scopes.push(Scope::default());
     }
 
+    fn start_class_scope(&mut self, span: Span) {
+        let mut scope = Scope::default();
+        let _ = scope.declare("this", span, true);
+        self.scopes.push(scope);
+    }
+
     fn end_scope(&mut self) -> IdentIndex {
         self.scopes.pop().unwrap().variables.len() as IdentIndex
+    }
+
+    fn resolve_function(&mut self, function: &mut FnDecl) {
+        self.start_scope();
+        for param in function.params.iter_mut() {
+            self.declare(param, true);
+        }
+        for stmt in function.body.iter_mut() {
+            walk_stmt(self, stmt);
+        }
+        function.num_of_locals = self.end_scope();
     }
 }
 
@@ -159,21 +176,16 @@ impl VisitorMut for Resolver {
 
     fn visit_function(&mut self, function: &mut FnDecl) -> Self::Result {
         self.declare(&mut function.ident, true);
-        self.start_scope();
-        for param in function.params.iter_mut() {
-            self.declare(param, true);
-        }
-        for stmt in function.body.iter_mut() {
-            walk_stmt(self, stmt);
-        }
-        function.num_of_locals = self.end_scope();
+        self.resolve_function(function);
     }
 
     fn visit_class(&mut self, class: &mut ClassDecl) -> Self::Result {
         self.declare(&mut class.ident, true);
+        self.start_class_scope(class.ident.span.clone());
         for method in class.methods.iter_mut() {
-            self.visit_function(method);
+            self.resolve_function(method);
         }
+        self.end_scope();
     }
 
     fn visit_return(&mut self, return_stmt: &mut Return) -> Self::Result {

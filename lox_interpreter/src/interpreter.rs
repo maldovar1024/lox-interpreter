@@ -17,7 +17,7 @@ use lox_parser::{
 use crate::{
     environment::{Env, Environment, GlobalEnvironment},
     error::{IResult, RuntimeError},
-    value::{Callable, Class, Function, NativeFunction, Value},
+    value::{Callable, Class, Function, Instance, NativeFunction, Value},
 };
 
 pub struct Interpreter {
@@ -169,7 +169,7 @@ impl Visitor for Interpreter {
     fn visit_class(&mut self, class: &ClassDecl) -> Self::Result {
         self.declare_var(
             &class.ident,
-            Value::Class(Rc::new(Class::new(class.clone(), self.env.clone()))),
+            Value::Class(Rc::new(Class::new(class, self.env.clone()))),
         );
         Ok(Value::Nil)
     }
@@ -194,7 +194,6 @@ impl Visitor for Interpreter {
             Value::NativeFunction(ref f) => f.as_ref(),
             Value::Function(ref f) => f.as_ref(),
             Value::Class(ref class) => class,
-            Value::Method(ref method) => method,
             _ => {
                 return Err(RuntimeError::NotCallable {
                     target: callee.to_string(),
@@ -225,7 +224,7 @@ impl Visitor for Interpreter {
     fn visit_get(&mut self, get: &Get) -> Self::Result {
         let object = walk_expr(self, &get.object)?;
         if let Value::Instance(instance) = object {
-            instance.borrow().get(&get.field)
+            Instance::get(instance, &get.field)
         } else {
             Err(Box::new(RuntimeError::InvalidFieldTarget {
                 target_type: object.type_name(),
@@ -238,7 +237,9 @@ impl Visitor for Interpreter {
         let object = walk_expr(self, &target.object)?;
         if let Value::Instance(instance) = object {
             let value = walk_expr(self, value)?;
-            instance.borrow_mut().set(target.field.to_string(), value.clone());
+            instance
+                .borrow_mut()
+                .set(target.field.to_string(), value.clone());
             Ok(value)
         } else {
             Err(Box::new(RuntimeError::InvalidFieldTarget {

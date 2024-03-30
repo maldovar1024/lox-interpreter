@@ -345,15 +345,21 @@ impl<'a> Parser<'a> {
         let next_token = self.next_token();
 
         let mut expr = match next_token.token_type {
-            TokenType::Keyword(kw) => Expr::literal(
-                match kw {
-                    Keyword::False => Lit::Bool(false),
-                    Keyword::Nil => Lit::Nil,
-                    Keyword::True => Lit::Bool(true),
-                    _ => todo!(),
-                },
-                next_token.span,
-            ),
+            TokenType::Keyword(kw) => match kw {
+                Keyword::False => Expr::literal(Lit::Bool(false), next_token.span),
+                Keyword::True => Expr::literal(Lit::Bool(true), next_token.span),
+                Keyword::Nil => Expr::literal(Lit::Nil, next_token.span),
+                Keyword::This => Expr::var(
+                    Ident::from_name("this".to_string(), next_token.span.clone()),
+                    next_token.span,
+                ),
+                kw => {
+                    return Err(Box::new(ParserError::UnexpectedToken(
+                        TokenType::Keyword(kw),
+                        next_token.span,
+                    )))
+                }
+            },
             TokenType::LeftParen => {
                 let grouped = self.expression()?;
                 let Span { end, .. } = eat!(self, TokenType::RightParen);

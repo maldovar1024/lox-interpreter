@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, fmt::Display, ptr, rc::Rc};
 
 use lox_parser::ast::{
     expr::Lit,
-    ident::Ident,
+    ident::{Ident, IdentTarget},
     stmt::{ClassDecl, FnDecl},
 };
 
@@ -65,31 +65,26 @@ impl Callable for Function {
 #[derive(Debug)]
 pub struct Class {
     pub ident: Ident,
-    pub methods_map: HashMap<String, usize>,
-    pub methods: Box<[Function]>,
+    pub methods: HashMap<String, Function>,
 }
 
 impl Class {
-    pub fn new(class: ClassDecl, environment: Option<Env>) -> Self {
-        let mut methods_map = HashMap::with_capacity(class.methods.len());
-        let methods = class
-            .methods
-            .into_vec()
-            .into_iter()
-            .enumerate()
-            .map(|(idx, method)| {
-                methods_map.insert(method.ident.name.to_string(), idx);
-                Function {
-                    declaration: method,
-                    closure: environment.clone(),
-                }
-            })
-            .collect();
-
+    pub fn new(class: &ClassDecl, environment: Option<Env>) -> Self {
         Self {
-            ident: class.ident,
-            methods,
-            methods_map,
+            ident: class.ident.clone(),
+            methods: class
+                .methods
+                .iter()
+                .map(|method| {
+                    (
+                        method.ident.name.to_string(),
+                        Function {
+                            declaration: method.clone(),
+                            closure: environment.clone(),
+                        },
+                    )
+                })
+                .collect(),
         }
     }
 }
@@ -107,28 +102,6 @@ impl Callable for Rc<Class> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Method {
-    class: Rc<Class>,
-    index: usize,
-}
-
-impl Method {
-    pub fn get_method(&self) -> &Function {
-        &self.class.methods[self.index]
-    }
-}
-
-impl Callable for Method {
-    fn arity(&self) -> u8 {
-        self.get_method().arity()
-    }
-
-    fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
-        self.get_method().call(interpreter, arguments)
-    }
-}
-
 #[derive(Debug)]
 pub struct Instance {
     class: Rc<Class>,
@@ -136,18 +109,34 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub fn get(&self, field: &str) -> IResult<Value> {
-        match self.fields.get(field) {
+    pub fn get(instance: Rc<RefCell<Self>>, field: &str) -> IResult<Value> {
+        let this = instance.borrow();
+        match this.fields.get(field) {
             Some(value) => Ok(value.clone()),
-            None => match self.class.methods_map.get(field) {
-                Some(&index) => Ok(Value::Method(Method {
-                    class: self.class.clone(),
-                    index,
-                })),
+            None => match this.class.methods.get(field) {
+                Some(method) => Ok(Value::Function(Rc::new(Self::bind_method(
+                    instance.clone(),
+                    method,
+                )))),
                 None => Err(Box::new(RuntimeError::UndefinedField {
                     field: field.to_string(),
                 })),
             },
+        }
+    }
+
+    fn bind_method(instance: Rc<RefCell<Self>>, method: &Function) -> Function {
+        let mut closure = Environment::new(1, method.closure.clone());
+        closure.assign(
+            IdentTarget {
+                scope_count: 0,
+                index: 0,
+            },
+            Value::Instance(instance),
+        );
+        Function {
+            declaration: method.declaration.clone(),
+            closure: Some(Rc::new(closure.into())),
         }
     }
 
@@ -166,7 +155,6 @@ pub enum Value {
     Function(Rc<Function>),
     Class(Rc<Class>),
     Instance(Rc<RefCell<Instance>>),
-    Method(Method),
 }
 
 impl PartialEq for Value {
@@ -179,9 +167,6 @@ impl PartialEq for Value {
             (Self::Function(f1), Self::Function(f2)) => ptr::eq(f1, f2),
             (Self::Class(f1), Self::Class(f2)) => ptr::eq(f1, f2),
             (Self::Instance(f1), Self::Instance(f2)) => ptr::eq(f1, f2),
-            (Self::Method(m1), Self::Method(m2)) => {
-                ptr::eq(&m1.class, &m2.class) && m1.index == m2.index
-            }
             (Self::Nil, Self::Nil) => true,
             _ => false,
         }
@@ -209,7 +194,6 @@ impl Value {
             Value::Function(_) => "function",
             Value::Class(_) => "class",
             Value::Instance(_) => "instance",
-            Value::Method(_) => "method",
         }
     }
 }
@@ -254,12 +238,6 @@ impl Display for Value {
             Value::Function(fun) => write!(f, "<function {}>", fun.declaration.ident),
             Value::Class(class) => write!(f, "<class {}>", class.ident),
             Value::Instance(instance) => write!(f, "<{} instance>", instance.borrow().class.ident),
-            Value::Method(method) => write!(
-                f,
-                "<method {}.{}>",
-                method.class.ident,
-                method.get_method().declaration.ident
-            ),
         }
     }
 }
