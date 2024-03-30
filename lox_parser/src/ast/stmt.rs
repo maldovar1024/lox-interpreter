@@ -70,6 +70,7 @@ pub struct Return {
 #[derive(Debug, Clone)]
 pub struct ClassDecl {
     pub ident: Ident,
+    pub super_class: Option<Ident>,
     pub methods: Box<[FnDecl]>,
 }
 

@@ -29,6 +29,8 @@ pub enum RuntimeError {
     Return(Span, Value),
     #[error("Cannot return value in constructor, {0}")]
     ReturnInConstructor(Span),
+    #[error("Invalid super class, {0}")]
+    InvalidSuperClass(Span),
 }
 
 pub type IResult<T> = Result<T, Box<RuntimeError>>;

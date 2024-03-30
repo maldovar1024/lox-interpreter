@@ -12,7 +12,7 @@ declaration    → classDecl
                | varDecl
                | statement ;
 
-classDecl      → "class" IDENTIFIER "{" function* "}" ;
+classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
 
 funDecl        → "fun" function ;
 function       → IDENTIFIER "(" parameters? ")" block ;
@@ -47,7 +47,7 @@ printStmt      → "print" expression ";" ;
 expression     → unary ( ( "=" | "!=" | "==" | ">" | ">=" | "<" | "<=" | "-" | "+" | "/" | "*" | "?" expression ":" | "and" | "or") unary )* ;
 unary          → ( "!" | "-" ) unary
                | primary ;
-primary        → NUMBER | STRING | "true" | "false" | "nil"
+primary        → NUMBER | STRING | "true" | "false" | "nil" | "this"
                | "(" expression ")" 
-               | IDENTIFIER ;
+               | ("super" ".")? IDENTIFIER ;
 ```

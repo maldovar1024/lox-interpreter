@@ -120,9 +120,9 @@ impl Resolver {
         self.scopes.push(Scope::default());
     }
 
-    fn start_class_scope(&mut self, span: Span) {
+    fn start_class_scope(&mut self, span: Span, is_super_class: bool) {
         let mut scope = Scope::default();
-        let _ = scope.declare("this", span, true);
+        let _ = scope.declare(if is_super_class { "super" } else { "this" }, span, true);
         self.scopes.push(scope);
     }
 
@@ -181,11 +181,20 @@ impl VisitorMut for Resolver {
 
     fn visit_class(&mut self, class: &mut ClassDecl) -> Self::Result {
         self.declare(&mut class.ident, true);
-        self.start_class_scope(class.ident.span.clone());
+        if let Some(super_class) = &mut class.super_class {
+            self.start_class_scope(super_class.span.clone(), true);
+            self.get(super_class);
+        }
+
+        self.start_class_scope(class.ident.span.clone(), false);
         for method in class.methods.iter_mut() {
             self.resolve_function(method);
         }
         self.end_scope();
+
+        if class.super_class.is_some() {
+            self.end_scope();
+        }
     }
 
     fn visit_return(&mut self, return_stmt: &mut Return) -> Self::Result {
@@ -202,6 +211,10 @@ impl VisitorMut for Resolver {
     }
 
     fn visit_literal(&mut self, _literal: &mut Lit) -> Self::Result {}
+
+    fn visit_super(&mut self, super_expr: &mut Super) -> Self::Result {
+        self.get(&mut super_expr.ident);
+    }
 
     fn visit_var(&mut self, var: &mut Ident) -> Self::Result {
         self.get(var);

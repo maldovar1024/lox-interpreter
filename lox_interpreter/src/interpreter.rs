@@ -12,6 +12,7 @@ use lox_parser::{
         visit::{walk_expr, walk_stmt, Visitor},
     },
     parser::Ast,
+    span::Position,
 };
 
 use crate::{
@@ -167,9 +168,21 @@ impl Visitor for Interpreter {
     }
 
     fn visit_class(&mut self, class: &ClassDecl) -> Self::Result {
+        let super_class = match &class.super_class {
+            Some(super_class) => match self.get_var(super_class)? {
+                Value::Class(class) => Some(class),
+                _ => {
+                    return Err(Box::new(RuntimeError::InvalidSuperClass(
+                        super_class.span.clone(),
+                    )))
+                }
+            },
+            None => None,
+        };
+
         self.declare_var(
             &class.ident,
-            Value::Class(Rc::new(Class::new(class, self.env.clone()))),
+            Value::Class(Rc::new(Class::new(class, super_class, self.env.clone()))),
         );
         Ok(Value::Nil)
     }
@@ -337,6 +350,45 @@ impl Visitor for Interpreter {
         };
         self.declare_var(&var_decl.ident, init);
         Ok(Value::Nil)
+    }
+
+    fn visit_super(&mut self, super_expr: &Super) -> Self::Result {
+        let super_class = match self.get_var(&super_expr.ident)? {
+            Value::Class(super_class) => super_class,
+            _ => {
+                return Err(Box::new(RuntimeError::InvalidSuperClass(
+                    super_expr.ident.span.clone(),
+                )))
+            }
+        };
+
+        let method = match super_class.get_method(&super_expr.method) {
+            Some(m) => m,
+            None => {
+                return Err(Box::new(RuntimeError::UndefinedField {
+                    field: super_expr.method.clone(),
+                }))
+            }
+        };
+
+        let instance = match self.get_var(&Ident {
+            name: String::new(),
+            target: Some(IdentTarget {
+                scope_count: super_expr.ident.target.unwrap().scope_count - 1,
+                index: 0,
+            }),
+            span: lox_parser::span::Span {
+                start: Position { column: 0, line: 0 },
+                end: Position { column: 0, line: 0 },
+            },
+        })? {
+            Value::Instance(instance) => instance,
+            _ => unreachable!(),
+        };
+
+        Ok(Value::Function(Rc::new(Instance::bind_method(
+            instance, method,
+        ))))
     }
 
     fn visit_var(&mut self, var: &Ident) -> Self::Result {

@@ -189,6 +189,13 @@ impl<'a> Parser<'a> {
         self.next_token();
         let ident = self.get_identifier()?;
 
+        let super_class = if matches!(self.look_ahead(), TokenType::Less) {
+            self.next_token();
+            Some(self.get_identifier()?)
+        } else {
+            None
+        };
+
         eat!(self, TokenType::LeftBrace);
         let mut methods = vec![];
         while !matches!(self.look_ahead(), TokenType::RightBrace) {
@@ -198,6 +205,7 @@ impl<'a> Parser<'a> {
 
         Ok(Statement::ClassDecl(ClassDecl {
             ident,
+            super_class,
             methods: methods.into_boxed_slice(),
         }))
     }
@@ -353,6 +361,16 @@ impl<'a> Parser<'a> {
                     Ident::from_name("this".to_string(), next_token.span.clone()),
                     next_token.span,
                 ),
+                Keyword::Super => Expr {
+                    expr: ExprInner::Super(Super {
+                        ident: Ident::from_name("super".to_string(), next_token.span.clone()),
+                        method: {
+                            eat!(self, TokenType::Dot);
+                            self.get_identifier()?.name
+                        },
+                    }),
+                    span: next_token.span,
+                },
                 kw => {
                     return Err(Box::new(ParserError::UnexpectedToken(
                         TokenType::Keyword(kw),

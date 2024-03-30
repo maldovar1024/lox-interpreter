@@ -65,13 +65,34 @@ impl Callable for Function {
 #[derive(Debug)]
 pub struct Class {
     pub ident: Ident,
+    pub super_class: Option<Rc<Class>>,
     pub methods: HashMap<String, Function>,
 }
 
 impl Class {
-    pub fn new(class: &ClassDecl, environment: Option<Env>) -> Self {
+    pub fn new(
+        class: &ClassDecl,
+        super_class: Option<Rc<Class>>,
+        environment: Option<Env>,
+    ) -> Self {
+        let environment = match super_class.clone() {
+            Some(super_class) => {
+                let mut environment = Environment::new(1, environment);
+                environment.assign(
+                    IdentTarget {
+                        scope_count: 0,
+                        index: 0,
+                    },
+                    Value::Class(super_class),
+                );
+                Some(Rc::new(environment.into()))
+            }
+            None => environment,
+        };
+
         Self {
             ident: class.ident.clone(),
+            super_class,
             methods: class
                 .methods
                 .iter()
@@ -89,14 +110,18 @@ impl Class {
     }
 
     #[inline]
-    fn get_initializer(&self) -> Option<&Function> {
-        self.methods.get("init")
+    pub fn get_method(&self, name: &str) -> Option<&Function> {
+        self.methods.get(name).or_else(|| {
+            self.super_class
+                .as_ref()
+                .and_then(|super_class| super_class.get_method(name))
+        })
     }
 }
 
 impl Callable for Rc<Class> {
     fn arity(&self) -> u8 {
-        self.get_initializer().map(|m| m.arity()).unwrap_or(0)
+        self.get_method("init").map(|m| m.arity()).unwrap_or(0)
     }
 
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
@@ -105,7 +130,7 @@ impl Callable for Rc<Class> {
             fields: Default::default(),
         }));
 
-        if let Some(initializer) = self.get_initializer() {
+        if let Some(initializer) = self.get_method("init") {
             if let Err(e) =
                 Instance::bind_method(instance.clone(), initializer).call(interpreter, arguments)
             {
@@ -134,7 +159,7 @@ impl Instance {
         let this = instance.borrow();
         match this.fields.get(field) {
             Some(value) => Ok(value.clone()),
-            None => match this.class.methods.get(field) {
+            None => match this.class.get_method(field) {
                 Some(method) => Ok(Value::Function(Rc::new(Self::bind_method(
                     instance.clone(),
                     method,
@@ -146,7 +171,7 @@ impl Instance {
         }
     }
 
-    fn bind_method(instance: Rc<RefCell<Self>>, method: &Function) -> Function {
+    pub fn bind_method(instance: Rc<RefCell<Self>>, method: &Function) -> Function {
         let mut closure = Environment::new(1, method.closure.clone());
         closure.assign(
             IdentTarget {

@@ -121,6 +121,12 @@ pub struct Set {
     pub value: Box<Expr>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Super {
+    pub ident: Ident,
+    pub method: String,
+}
+
 ast_enum! {
     pub enum ExprInner {
         visit_binary: Binary(BinaryExpr),
@@ -133,6 +139,7 @@ ast_enum! {
         visit_fn_call: FnCall(FnCall),
         visit_get: Get(Get),
         visit_set: Set(Set),
+        visit_super: Super(Super),
     }
 }
 

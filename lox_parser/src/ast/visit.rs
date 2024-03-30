@@ -65,6 +65,8 @@ pub trait Visitor: Sized {
         walk_expr(self, &set.value)
     }
 
+    fn visit_super(&mut self, super_expr: &Super) -> Self::Result;
+
     fn visit_literal(&mut self, literal: &Lit) -> Self::Result;
 
     fn visit_var(&mut self, var: &Ident) -> Self::Result;
