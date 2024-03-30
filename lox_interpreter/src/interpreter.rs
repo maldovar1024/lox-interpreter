@@ -7,12 +7,12 @@ use std::{
 use lox_parser::{
     ast::{
         expr::*,
-        ident::{Ident, IdentTarget},
+        ident::{Ident, IdentTarget, Variable},
         stmt::*,
         visit::{walk_expr, walk_stmt, Visitor},
     },
     parser::Ast,
-    span::Position,
+    span::Span,
 };
 
 use crate::{
@@ -67,27 +67,27 @@ impl Interpreter {
             .assign(target, value)
     }
 
-    fn declare_var(&mut self, ident: &Ident, value: Value) {
-        match ident.target {
+    fn declare_var(&mut self, var: &Variable, value: Value) {
+        match var.target {
             Some(target) => self.assign_to(target, value),
-            None => self.global_env.define(&ident.name, value),
+            None => self.global_env.define(&var.ident.name, value),
         }
     }
 
-    fn set_var(&mut self, ident: &Ident, value: Value) -> IResult<()> {
-        match ident.target {
+    fn set_var(&mut self, var: &Variable, value: Value) -> IResult<()> {
+        match var.target {
             Some(target) => {
                 self.assign_to(target, value);
                 Ok(())
             }
-            None => self.global_env.assign(&ident.name, value),
+            None => self.global_env.assign(&var.ident.name, value),
         }
     }
 
-    fn get_var(&self, ident: &Ident) -> IResult<Value> {
-        match ident.target {
+    fn get_var(&self, var: &Variable) -> IResult<Value> {
+        match var.target {
             Some(target) => Ok(self.env.as_deref().unwrap().borrow().get(target)),
-            None => self.global_env.get(&ident.name),
+            None => self.global_env.get(&var.ident.name),
         }
     }
 
@@ -95,7 +95,7 @@ impl Interpreter {
         let value = walk_expr(self, expr)?;
         match value {
             Value::Number(n) => Ok(n),
-            v => Err(RuntimeError::type_error(&expr.span, "number", &v)),
+            v => Err(RuntimeError::type_error(expr.get_span(), "number", &v)),
         }
     }
 
@@ -158,7 +158,7 @@ impl Visitor for Interpreter {
     fn visit_function(&mut self, function: &FnDecl) -> Self::Result {
         //! cyclic ref here
         self.declare_var(
-            &function.ident,
+            &function.var,
             Value::Function(Rc::new(Function {
                 declaration: function.to_owned(),
                 closure: self.env.clone(),
@@ -173,7 +173,7 @@ impl Visitor for Interpreter {
                 Value::Class(class) => Some(class),
                 _ => {
                     return Err(Box::new(RuntimeError::InvalidSuperClass(
-                        super_class.span.clone(),
+                        super_class.ident.span,
                     )))
                 }
             },
@@ -181,7 +181,7 @@ impl Visitor for Interpreter {
         };
 
         self.declare_var(
-            &class.ident,
+            &class.var,
             Value::Class(Rc::new(Class::new(class, super_class, self.env.clone()))),
         );
         Ok(Value::Nil)
@@ -193,7 +193,7 @@ impl Visitor for Interpreter {
             None => Value::Nil,
         };
 
-        Err(RuntimeError::Return(return_stmt.span.clone(), value).to_box())
+        Err(RuntimeError::Return(return_stmt.span, value).to_box())
     }
 
     fn visit_fn_call(&mut self, fn_call: &FnCall) -> Self::Result {
@@ -210,7 +210,7 @@ impl Visitor for Interpreter {
             _ => {
                 return Err(RuntimeError::NotCallable {
                     target: callee.to_string(),
-                    span: fn_call.callee.span.clone(),
+                    span: fn_call.callee.get_span(),
                 }
                 .to_box())
             }
@@ -220,7 +220,7 @@ impl Visitor for Interpreter {
             return Err(RuntimeError::ArgumentsNotMatch {
                 expected: f.arity(),
                 got: arguments.len(),
-                span: fn_call.callee.span.clone(),
+                span: fn_call.callee.get_span(),
             }
             .to_box());
         }
@@ -237,11 +237,11 @@ impl Visitor for Interpreter {
     fn visit_get(&mut self, get: &Get) -> Self::Result {
         let object = walk_expr(self, &get.object)?;
         if let Value::Instance(instance) = object {
-            Instance::get(instance, &get.field)
+            Instance::get(instance, &get.field.name)
         } else {
             Err(Box::new(RuntimeError::InvalidFieldTarget {
                 target_type: object.type_name(),
-                field: get.field.to_string(),
+                field: get.field.name.to_string(),
             }))
         }
     }
@@ -252,24 +252,24 @@ impl Visitor for Interpreter {
             let value = walk_expr(self, value)?;
             instance
                 .borrow_mut()
-                .set(target.field.to_string(), value.clone());
+                .set(target.field.name.to_string(), value.clone());
             Ok(value)
         } else {
             Err(Box::new(RuntimeError::InvalidFieldTarget {
                 target_type: object.type_name(),
-                field: target.field.to_string(),
+                field: target.field.name.to_string(),
             }))
         }
     }
 
     fn visit_assign(&mut self, assign: &Assign) -> Self::Result {
         let value = walk_expr(self, &assign.value)?;
-        self.set_var(&assign.ident, value.clone())?;
+        self.set_var(&assign.var, value.clone())?;
         Ok(value)
     }
 
-    fn visit_literal(&mut self, literal: &Lit) -> Self::Result {
-        Ok(literal.clone().into())
+    fn visit_literal(&mut self, literal: &Literal) -> Self::Result {
+        Ok(literal.value.clone().into())
     }
 
     fn visit_binary(&mut self, binary: &BinaryExpr) -> Self::Result {
@@ -289,18 +289,22 @@ impl Visitor for Interpreter {
                     (Value::String(s1), v2) => (s1 + &v2.to_string()).into(),
                     (v1, Value::String(s2)) => (v1.to_string() + &s2).into(),
                     (v, Value::Number(_)) => {
-                        return Err(RuntimeError::type_error(&binary.left.span, "number", &v))
+                        return Err(RuntimeError::type_error(
+                            binary.left.get_span(),
+                            "number",
+                            &v,
+                        ))
                     }
                     (Value::Number(_), v) => {
                         return Err(RuntimeError::type_error(
-                            &binary.right.span,
+                            binary.right.get_span(),
                             "number or string",
                             &v,
                         ))
                     }
                     (v, _) => {
                         return Err(RuntimeError::type_error(
-                            &binary.left.span,
+                            binary.left.get_span(),
                             "number or string",
                             &v,
                         ))
@@ -348,39 +352,38 @@ impl Visitor for Interpreter {
             Some(expr) => walk_expr(self, expr)?,
             None => Value::Nil,
         };
-        self.declare_var(&var_decl.ident, init);
+        self.declare_var(&var_decl.var, init);
         Ok(Value::Nil)
     }
 
     fn visit_super(&mut self, super_expr: &Super) -> Self::Result {
-        let super_class = match self.get_var(&super_expr.ident)? {
+        let super_class = match self.get_var(&super_expr.var)? {
             Value::Class(super_class) => super_class,
             _ => {
                 return Err(Box::new(RuntimeError::InvalidSuperClass(
-                    super_expr.ident.span.clone(),
+                    super_expr.var.ident.span,
                 )))
             }
         };
 
-        let method = match super_class.get_method(&super_expr.method) {
+        let method = match super_class.get_method(&super_expr.method.name) {
             Some(m) => m,
             None => {
                 return Err(Box::new(RuntimeError::UndefinedField {
-                    field: super_expr.method.clone(),
+                    field: super_expr.method.name.clone(),
                 }))
             }
         };
 
-        let instance = match self.get_var(&Ident {
-            name: String::new(),
+        let instance = match self.get_var(&Variable {
+            ident: Ident {
+                name: String::new(),
+                span: Span::dummy(),
+            },
             target: Some(IdentTarget {
-                scope_count: super_expr.ident.target.unwrap().scope_count - 1,
+                scope_count: super_expr.var.target.unwrap().scope_count - 1,
                 index: 0,
             }),
-            span: lox_parser::span::Span {
-                start: Position { column: 0, line: 0 },
-                end: Position { column: 0, line: 0 },
-            },
         })? {
             Value::Instance(instance) => instance,
             _ => unreachable!(),
@@ -391,7 +394,7 @@ impl Visitor for Interpreter {
         ))))
     }
 
-    fn visit_var(&mut self, var: &Ident) -> Self::Result {
+    fn visit_var(&mut self, var: &Variable) -> Self::Result {
         self.get_var(var)
     }
 }

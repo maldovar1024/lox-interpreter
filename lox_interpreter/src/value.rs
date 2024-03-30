@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, fmt::Display, ptr, rc::Rc};
 
 use lox_parser::ast::{
     expr::Lit,
-    ident::{Ident, IdentTarget},
+    ident::{Variable, IdentTarget},
     stmt::{ClassDecl, FnDecl},
 };
 
@@ -64,7 +64,7 @@ impl Callable for Function {
 
 #[derive(Debug)]
 pub struct Class {
-    pub ident: Ident,
+    pub var: Variable,
     pub super_class: Option<Rc<Class>>,
     pub methods: HashMap<String, Function>,
 }
@@ -91,14 +91,14 @@ impl Class {
         };
 
         Self {
-            ident: class.ident.clone(),
+            var: class.var.clone(),
             super_class,
             methods: class
                 .methods
                 .iter()
                 .map(|method| {
                     (
-                        method.ident.name.to_string(),
+                        method.var.ident.name.to_string(),
                         Function {
                             declaration: method.clone(),
                             closure: environment.clone(),
@@ -281,9 +281,9 @@ impl Display for Value {
             Value::Bool(b) => write!(f, "{b}"),
             Value::Nil => write!(f, "nil"),
             Value::NativeFunction(fun) => write!(f, "<native function {}>", fun.name),
-            Value::Function(fun) => write!(f, "<function {}>", fun.declaration.ident),
-            Value::Class(class) => write!(f, "<class {}>", class.ident),
-            Value::Instance(instance) => write!(f, "<{} instance>", instance.borrow().class.ident),
+            Value::Function(fun) => write!(f, "<function {}>", fun.declaration.var),
+            Value::Class(class) => write!(f, "<class {}>", class.var),
+            Value::Instance(instance) => write!(f, "<{} instance>", instance.borrow().class.var),
         }
     }
 }

@@ -1,4 +1,4 @@
-use super::{expr::*, ident::Ident, stmt::*};
+use super::{expr::*, ident::Variable, stmt::*};
 
 pub trait VisitorMut: Sized {
     type Result;
@@ -46,7 +46,7 @@ pub trait VisitorMut: Sized {
     }
 
     fn visit_assign(&mut self, assign: &mut Assign) -> Self::Result {
-        walk_var(self, &mut assign.ident);
+        walk_var(self, &mut assign.var);
         walk_expr(self, &mut assign.value)
     }
 
@@ -67,9 +67,9 @@ pub trait VisitorMut: Sized {
 
     fn visit_super(&mut self, super_expr: &mut Super) -> Self::Result;
 
-    fn visit_literal(&mut self, literal: &mut Lit) -> Self::Result;
+    fn visit_literal(&mut self, literal: &mut Literal) -> Self::Result;
 
-    fn visit_var(&mut self, var: &mut Ident) -> Self::Result;
+    fn visit_var(&mut self, var: &mut Variable) -> Self::Result;
 }
 
 pub fn walk_stmt<V: VisitorMut>(visitor: &mut V, stmt: &mut Statement) -> V::Result {
@@ -85,7 +85,7 @@ pub fn walk_expression<V: VisitorMut>(visitor: &mut V, expression: &mut Expressi
 }
 
 pub fn walk_expr<V: VisitorMut>(visitor: &mut V, expr: &mut Expr) -> V::Result {
-    expr.expr.walk_mut(visitor)
+    expr.walk_mut(visitor)
 }
 
 pub fn walk_binary<V: VisitorMut>(visitor: &mut V, binary: &mut BinaryExpr) -> V::Result {
@@ -107,6 +107,6 @@ pub fn walk_group<V: VisitorMut>(visitor: &mut V, group: &mut Group) -> V::Resul
     visitor.visit_expr(&mut group.expr)
 }
 
-pub fn walk_var<V: VisitorMut>(visitor: &mut V, var: &mut Ident) -> V::Result {
+pub fn walk_var<V: VisitorMut>(visitor: &mut V, var: &mut Variable) -> V::Result {
     visitor.visit_var(var)
 }

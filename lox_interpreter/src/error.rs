@@ -40,9 +40,9 @@ impl RuntimeError {
         Box::new(self)
     }
 
-    pub fn type_error(span: &Span, expected: &'static str, found: &Value) -> Box<RuntimeError> {
+    pub fn type_error(span: Span, expected: &'static str, found: &Value) -> Box<RuntimeError> {
         RuntimeError::TypeError {
-            span: span.clone(),
+            span,
             expected,
             found: found.type_name(),
         }

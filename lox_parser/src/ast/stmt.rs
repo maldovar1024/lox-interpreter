@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expr::Expr,
-        ident::{Ident, IdentIndex},
+        ident::{Variable, IdentIndex},
         visit::Visitor,
         visit_mut::VisitorMut,
     },
@@ -21,7 +21,7 @@ pub struct Expression {
 
 #[derive(Debug, Clone)]
 pub struct VarDecl {
-    pub ident: Ident,
+    pub var: Variable,
     pub initializer: Option<Expr>,
 }
 
@@ -55,8 +55,8 @@ pub struct While {
 
 #[derive(Debug, Clone)]
 pub struct FnDecl {
-    pub ident: Ident,
-    pub params: Box<[Ident]>,
+    pub var: Variable,
+    pub params: Box<[Variable]>,
     pub body: Box<[Statement]>,
     pub num_of_locals: IdentIndex,
 }
@@ -69,8 +69,8 @@ pub struct Return {
 
 #[derive(Debug, Clone)]
 pub struct ClassDecl {
-    pub ident: Ident,
-    pub super_class: Option<Ident>,
+    pub var: Variable,
+    pub super_class: Option<Variable>,
     pub methods: Box<[FnDecl]>,
 }
 

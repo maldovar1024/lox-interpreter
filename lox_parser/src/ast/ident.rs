@@ -13,22 +13,38 @@ pub struct IdentTarget {
 #[derive(Debug, Clone)]
 pub struct Ident {
     pub name: String,
-    pub target: Option<IdentTarget>,
     pub span: Span,
 }
 
-impl Display for Ident {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
+impl Ident {
+    #[inline]
+    pub(crate) fn from_name(name: String, span: Span) -> Self {
+        Self { name, span }
     }
 }
 
-impl Ident {
+#[derive(Debug, Clone)]
+pub struct Variable {
+    pub ident: Ident,
+    pub target: Option<IdentTarget>,
+}
+
+impl Display for Variable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.ident.name)
+    }
+}
+
+impl From<Ident> for Variable {
+    #[inline]
+    fn from(ident: Ident) -> Self {
+        Self { ident, target: None }
+    }
+}
+
+impl Variable {
+    #[inline]
     pub(crate) fn from_name(name: String, span: Span) -> Self {
-        Self {
-            name,
-            target: None,
-            span,
-        }
+        Ident::from_name(name, span).into()
     }
 }

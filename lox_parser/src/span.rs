@@ -1,9 +1,9 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Position {
-    pub line: usize,
-    pub column: usize,
+    pub line: u32,
+    pub column: u32,
 }
 
 impl Display for Position {
@@ -12,7 +12,7 @@ impl Display for Position {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Span {
     pub start: Position,
     pub end: Position,
@@ -25,10 +25,20 @@ impl Display for Span {
 }
 
 impl Span {
-    pub fn extends_with(&self, end: &Self) -> Self {
+    pub fn extends_with(mut self, end: &Self) -> Self {
+        self.end = end.end;
+        self
+    }
+
+    pub fn extends_with_pos(mut self, end: Position) -> Self {
+        self.end = end;
+        self
+    }
+
+    pub fn dummy() -> Self {
         Self {
-            start: self.start.clone(),
-            end: end.end.clone(),
+            start: Position { line: 0, column: 0 },
+            end: Position { line: 0, column: 0 },
         }
     }
 }

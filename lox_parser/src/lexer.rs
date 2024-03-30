@@ -46,7 +46,7 @@ impl<'a> Lexer<'a> {
         }
 
         self.update_byte_pos();
-        let start = self.current_position.clone();
+        let start = self.current_position;
 
         let first_char = match self.bump() {
             Some(c) => c,
@@ -109,7 +109,7 @@ impl<'a> Lexer<'a> {
             token_type,
             span: Span {
                 start,
-                end: self.current_position.clone(),
+                end: self.current_position,
             },
         }
     }
@@ -185,7 +185,7 @@ impl<'a> Lexer<'a> {
 
     fn skip_multiline_comment(&mut self) -> Option<Token> {
         let mut level = 1;
-        let start = self.current_position.clone();
+        let start = self.current_position;
 
         self.bump();
         self.bump();

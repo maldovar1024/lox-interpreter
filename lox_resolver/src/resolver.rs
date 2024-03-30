@@ -3,7 +3,7 @@ use std::{collections::HashMap, mem};
 use lox_parser::{
     ast::{
         expr::*,
-        ident::{Ident, IdentIndex, IdentTarget},
+        ident::{IdentIndex, IdentTarget, Variable},
         stmt::*,
         visit_mut::{walk_expr, walk_stmt, VisitorMut},
     },
@@ -20,7 +20,7 @@ enum VariableStatus {
     Used,
 }
 
-struct Variable {
+struct VarInfo {
     index: IdentIndex,
     defined_at: Span,
     status: VariableStatus,
@@ -28,18 +28,18 @@ struct Variable {
 
 #[derive(Default)]
 struct Scope {
-    variables: HashMap<String, Variable>,
+    variables: HashMap<String, VarInfo>,
 }
 
 impl Scope {
     fn declare(&mut self, name: &str, span: Span, initialized: bool) -> Result<IdentIndex, Span> {
         match self.variables.get(name) {
-            Some(var) => Err(var.defined_at.clone()),
+            Some(var) => Err(var.defined_at),
             None => {
                 let index = self.variables.len() as IdentIndex;
                 self.variables.insert(
                     name.to_string(),
-                    Variable {
+                    VarInfo {
                         index,
                         defined_at: span,
                         status: if initialized {
@@ -97,28 +97,28 @@ impl Resolver {
         }
     }
 
-    fn declare(&mut self, ident: &mut Ident, initialized: bool) {
+    fn declare(&mut self, var: &mut Variable, initialized: bool) {
         if let Some(scope) = self.scopes.last_mut() {
-            match scope.declare(&ident.name, ident.span.clone(), initialized) {
+            match scope.declare(&var.ident.name, var.ident.span, initialized) {
                 Ok(index) => {
-                    ident.target = Some(IdentTarget {
+                    var.target = Some(IdentTarget {
                         scope_count: 0,
                         index,
                     })
                 }
                 Err(defined_at) => self.errors.push(ResolverError::RedefineVar {
-                    pos: ident.span.clone(),
-                    name: ident.name.to_string(),
+                    pos: var.ident.span,
+                    name: var.ident.name.to_string(),
                     defined_at,
                 }),
             }
         }
     }
 
-    fn access(&mut self, ident: &mut Ident, status: VariableStatus) {
+    fn access(&mut self, var: &mut Variable, status: VariableStatus) {
         for (scope_count, scope) in self.scopes.iter_mut().rev().enumerate() {
-            if let Some(index) = scope.access(&ident.name, status) {
-                ident.target = Some(IdentTarget {
+            if let Some(index) = scope.access(&var.ident.name, status) {
+                var.target = Some(IdentTarget {
                     scope_count: scope_count as u16,
                     index,
                 });
@@ -127,12 +127,12 @@ impl Resolver {
         }
     }
 
-    fn assign(&mut self, ident: &mut Ident) {
-        self.access(ident, VariableStatus::Initialized);
+    fn assign(&mut self, var: &mut Variable) {
+        self.access(var, VariableStatus::Initialized);
     }
 
-    fn get(&mut self, ident: &mut Ident) {
-        self.access(ident, VariableStatus::Used);
+    fn get(&mut self, var: &mut Variable) {
+        self.access(var, VariableStatus::Used);
     }
 
     fn start_scope(&mut self) {
@@ -186,34 +186,34 @@ impl VisitorMut for Resolver {
     }
 
     fn visit_var_decl(&mut self, var_decl: &mut VarDecl) -> Self::Result {
-        self.declare(&mut var_decl.ident, false);
+        self.declare(&mut var_decl.var, false);
         if let Some(expr) = &mut var_decl.initializer {
             walk_expr(self, expr);
-            self.assign(&mut var_decl.ident);
+            self.assign(&mut var_decl.var);
         }
     }
 
     fn visit_function(&mut self, function: &mut FnDecl) -> Self::Result {
-        self.declare(&mut function.ident, true);
+        self.declare(&mut function.var, true);
         let previous = mem::replace(&mut self.function_type, FunctionType::Function);
         self.resolve_function(function);
         self.function_type = previous;
     }
 
     fn visit_class(&mut self, class: &mut ClassDecl) -> Self::Result {
-        self.declare(&mut class.ident, true);
+        self.declare(&mut class.var, true);
         let previous_class_type = mem::replace(&mut self.class_type, ClassType::Class);
         if let Some(super_class) = &mut class.super_class {
-            self.start_class_scope(super_class.span.clone(), true);
+            self.start_class_scope(super_class.ident.span, true);
             self.get(super_class);
             self.class_type = ClassType::SubClass;
         }
 
-        self.start_class_scope(class.ident.span.clone(), false);
+        self.start_class_scope(class.var.ident.span, false);
         for method in class.methods.iter_mut() {
             let previous_fn_type = mem::replace(
                 &mut self.function_type,
-                if method.ident.name == "init" {
+                if method.var.ident.name == "init" {
                     FunctionType::Initializer
                 } else {
                     FunctionType::Method
@@ -233,11 +233,11 @@ impl VisitorMut for Resolver {
     fn visit_return(&mut self, return_stmt: &mut Return) -> Self::Result {
         if matches!(self.function_type, FunctionType::None) {
             self.errors
-                .push(ResolverError::InvalidReturn(return_stmt.span.clone()));
+                .push(ResolverError::InvalidReturn(return_stmt.span));
         } else if let Some(expr) = &mut return_stmt.expr {
             if matches!(self.function_type, FunctionType::Initializer) {
                 self.errors
-                    .push(ResolverError::ReturnInConstructor(return_stmt.span.clone()));
+                    .push(ResolverError::ReturnInConstructor(return_stmt.span));
             }
             walk_expr(self, expr);
         }
@@ -250,22 +250,23 @@ impl VisitorMut for Resolver {
         }
     }
 
-    fn visit_literal(&mut self, _literal: &mut Lit) -> Self::Result {}
+    fn visit_literal(&mut self, _literal: &mut Literal) -> Self::Result {}
 
     fn visit_super(&mut self, super_expr: &mut Super) -> Self::Result {
         match self.class_type {
-            ClassType::SubClass => self.get(&mut super_expr.ident),
-            ClassType::Class => self.errors.push(ResolverError::NotSubClass(super_expr.ident.span.clone())),
+            ClassType::SubClass => self.get(&mut super_expr.var),
+            ClassType::Class => self
+                .errors
+                .push(ResolverError::NotSubClass(super_expr.var.ident.span)),
             ClassType::None => self
                 .errors
-                .push(ResolverError::InvalidSuper(super_expr.ident.span.clone())),
+                .push(ResolverError::InvalidSuper(super_expr.var.ident.span)),
         }
     }
 
-    fn visit_var(&mut self, var: &mut Ident) -> Self::Result {
-        if var.name == "this" && matches!(self.function_type, FunctionType::None) {
-            self.errors
-                .push(ResolverError::InvalidThis(var.span.clone()));
+    fn visit_var(&mut self, var: &mut Variable) -> Self::Result {
+        if var.ident.name == "this" && matches!(self.function_type, FunctionType::None) {
+            self.errors.push(ResolverError::InvalidThis(var.ident.span));
         }
         self.get(var);
     }

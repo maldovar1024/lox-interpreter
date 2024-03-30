@@ -1,7 +1,11 @@
 use std::mem;
 
 use crate::{
-    ast::{expr::*, ident::Ident, stmt::*},
+    ast::{
+        expr::*,
+        ident::{Ident, Variable},
+        stmt::*,
+    },
     error::{PResult, ParserError},
     lexer::Lexer,
     precedence::Operator,
@@ -148,7 +152,7 @@ impl<'a> Parser<'a> {
         eat!(self, TokenType::Semicolon);
 
         Ok(Statement::Var(VarDecl {
-            ident: Ident::from_name(name, next_token.span),
+            var: Variable::from_name(name, next_token.span),
             initializer,
         }))
     }
@@ -161,7 +165,7 @@ impl<'a> Parser<'a> {
         let mut parameters = vec![];
         if !matches!(self.look_ahead(), TokenType::RightParen) {
             loop {
-                parameters.push(self.get_identifier()?);
+                parameters.push(self.get_identifier()?.into());
                 match self.look_ahead() {
                     TokenType::Comma => {
                         self.next_token();
@@ -178,7 +182,7 @@ impl<'a> Parser<'a> {
         }
 
         Ok(FnDecl {
-            ident,
+            var: ident.into(),
             params: parameters.into_boxed_slice(),
             body: self.block()?,
             num_of_locals: 0,
@@ -204,8 +208,8 @@ impl<'a> Parser<'a> {
         eat!(self, TokenType::RightBrace);
 
         Ok(Statement::ClassDecl(ClassDecl {
-            ident,
-            super_class,
+            var: ident.into(),
+            super_class: super_class.map(From::from),
             methods: methods.into_boxed_slice(),
         }))
     }
@@ -274,7 +278,6 @@ impl<'a> Parser<'a> {
             TokenType::Semicolon => None,
             _ => Some(self.expression()?),
         };
-        let condition_span = eat!(self, TokenType::Semicolon);
 
         let increment = match self.look_ahead() {
             TokenType::RightParen => None,
@@ -285,10 +288,7 @@ impl<'a> Parser<'a> {
         let body = self.statement()?;
 
         let inner = Statement::While(While {
-            condition: condition.unwrap_or(Expr {
-                expr: ExprInner::Literal(Lit::Bool(true)),
-                span: condition_span,
-            }),
+            condition: condition.unwrap_or(Expr::literal(Lit::Bool(true), Span::dummy())),
             body: match increment {
                 Some(increment) => Box::new(Statement::Block(Block::new(
                     [body, Statement::Expression(Expression { expr: increment })].into(),
@@ -357,20 +357,16 @@ impl<'a> Parser<'a> {
                 Keyword::False => Expr::literal(Lit::Bool(false), next_token.span),
                 Keyword::True => Expr::literal(Lit::Bool(true), next_token.span),
                 Keyword::Nil => Expr::literal(Lit::Nil, next_token.span),
-                Keyword::This => Expr::var(
-                    Ident::from_name("this".to_string(), next_token.span.clone()),
-                    next_token.span,
-                ),
-                Keyword::Super => Expr {
-                    expr: ExprInner::Super(Super {
-                        ident: Ident::from_name("super".to_string(), next_token.span.clone()),
-                        method: {
-                            eat!(self, TokenType::Dot);
-                            self.get_identifier()?.name
-                        },
-                    }),
-                    span: next_token.span,
-                },
+                Keyword::This => {
+                    Expr::Var(Variable::from_name("this".to_string(), next_token.span))
+                }
+                Keyword::Super => Expr::Super(Super {
+                    var: Variable::from_name("super".to_string(), next_token.span),
+                    method: {
+                        eat!(self, TokenType::Dot);
+                        self.get_identifier()?
+                    },
+                }),
                 kw => {
                     return Err(Box::new(ParserError::UnexpectedToken(
                         TokenType::Keyword(kw),
@@ -395,10 +391,7 @@ impl<'a> Parser<'a> {
                 next_token.span,
                 self.expr_precedence(Operator::Prefix)?,
             ),
-            TokenType::Identifier(name) => Expr::var(
-                Ident::from_name(name, next_token.span.clone()),
-                next_token.span,
-            ),
+            TokenType::Identifier(name) => Expr::Var(Variable::from_name(name, next_token.span)),
             t => {
                 return Err(p(ParserError::ExpectStructure {
                     expected: "expression",
@@ -418,14 +411,14 @@ impl<'a> Parser<'a> {
                             eat!(self, TokenType::Colon);
                             Expr::ternary(expr, truthy, self.expr_precedence(next_op)?)
                         }
-                        Operator::Assign => match expr.expr {
-                            ExprInner::Var(ident) => {
-                                Expr::assign(ident, self.expr_precedence(next_op)?)
+                        Operator::Assign => match expr {
+                            Expr::Var(ident) => Expr::assign(ident, self.expr_precedence(next_op)?),
+                            Expr::Get(get) => Expr::set(get, self.expr_precedence(next_op)?),
+                            _ => {
+                                return Err(Box::new(ParserError::InvalidLeftValue(
+                                    expr.get_span(),
+                                )))
                             }
-                            ExprInner::Get(get) => {
-                                Expr::set(get, expr.span, self.expr_precedence(next_op)?)
-                            }
-                            _ => return Err(Box::new(ParserError::InvalidLeftValue(expr.span))),
                         },
                         Operator::FnCall => self.fn_call(expr)?,
                         Operator::Dot => Expr::get(expr, self.get_identifier()?),
@@ -458,14 +451,11 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let end = eat!(self, TokenType::RightParen);
-        let span = callee.span.extends_with(&end);
-        Ok(Expr {
-            expr: ExprInner::FnCall(FnCall {
-                callee: Box::new(callee),
-                arguments: arguments.into_boxed_slice(),
-            }),
-            span,
-        })
+        let Span { end, .. } = eat!(self, TokenType::RightParen);
+        Ok(Expr::FnCall(FnCall {
+            callee: Box::new(callee),
+            arguments: arguments.into_boxed_slice(),
+            end,
+        }))
     }
 }
