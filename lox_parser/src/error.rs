@@ -1,6 +1,5 @@
+use lox_lexer::{Span, TokenType};
 use thiserror::Error;
-
-use crate::{span::Span, token::TokenType};
 
 #[derive(Debug, Error)]
 pub enum ParserError {

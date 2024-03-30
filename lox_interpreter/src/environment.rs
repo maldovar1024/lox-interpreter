@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use lox_parser::ast::ident::{IdentIndex, IdentTarget};
+use lox_ast::{IdentIndex, IdentTarget};
 
 use crate::{
     error::{IResult, RuntimeError},

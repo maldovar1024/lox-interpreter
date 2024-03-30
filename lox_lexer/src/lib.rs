@@ -1,9 +1,12 @@
+mod span;
+mod token;
+
 use std::{char, str::Chars};
 
-use crate::{
-    span::{Position, Span},
-    token::{Literal, Token, TokenType, KEY_WORDS_MAP},
-};
+use crate::token::KEY_WORDS_MAP;
+
+pub use span::*;
+pub use token::*;
 
 const EOF_CHAR: char = '\0';
 
@@ -31,7 +34,7 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub(crate) fn new(src: &'a str) -> Self {
+    pub fn new(src: &'a str) -> Self {
         Self {
             src,
             chars: src.chars(),
@@ -40,9 +43,9 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub(crate) fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Token {
         if let Some(token) = self.skip() {
-            return token
+            return token;
         }
 
         self.update_byte_pos();

@@ -1,6 +1,5 @@
+use lox_lexer::Span;
 use std::fmt::Display;
-
-use crate::span::Span;
 
 pub type IdentIndex = u16;
 
@@ -18,7 +17,7 @@ pub struct Ident {
 
 impl Ident {
     #[inline]
-    pub(crate) fn from_name(name: String, span: Span) -> Self {
+    pub fn from_name(name: String, span: Span) -> Self {
         Self { name, span }
     }
 }
@@ -38,13 +37,16 @@ impl Display for Variable {
 impl From<Ident> for Variable {
     #[inline]
     fn from(ident: Ident) -> Self {
-        Self { ident, target: None }
+        Self {
+            ident,
+            target: None,
+        }
     }
 }
 
 impl Variable {
     #[inline]
-    pub(crate) fn from_name(name: String, span: Span) -> Self {
+    pub fn from_name(name: String, span: Span) -> Self {
         Ident::from_name(name, span).into()
     }
 }

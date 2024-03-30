@@ -1,24 +1,18 @@
-use std::{
-    mem,
-    rc::Rc,
-    time::{SystemTime, UNIX_EPOCH},
-};
-
-use lox_parser::{
-    ast::{
-        expr::*,
-        ident::{Ident, IdentTarget, Variable},
-        stmt::*,
-        visit::{walk_expr, walk_stmt, Visitor},
-    },
-    parser::Ast,
-    span::Span,
-};
-
 use crate::{
     environment::{Env, Environment, GlobalEnvironment},
     error::{IResult, RuntimeError},
     value::{Callable, Class, Function, Instance, NativeFunction, Value},
+};
+use lox_ast::{
+    visit::{walk_expr, walk_stmt, Visitor},
+    *,
+};
+use lox_lexer::Span;
+use lox_parser::parser::Ast;
+use std::{
+    mem,
+    rc::Rc,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 pub struct Interpreter {

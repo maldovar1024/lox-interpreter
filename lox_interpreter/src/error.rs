@@ -1,4 +1,4 @@
-use lox_parser::span::Span;
+use lox_lexer::Span;
 use thiserror::Error;
 
 use crate::value::Value;
@@ -16,7 +16,10 @@ pub enum RuntimeError {
     #[error("Undefined variable `{field}`")]
     UndefinedField { field: String },
     #[error("Cannot read field of type {target_type}, reading {field}")]
-    InvalidFieldTarget { target_type: &'static str, field: String },
+    InvalidFieldTarget {
+        target_type: &'static str,
+        field: String,
+    },
     #[error("{target} is not callable, {span}")]
     NotCallable { target: String, span: Span },
     #[error("Expected {expected} arguments. but got {got}, {span}")]

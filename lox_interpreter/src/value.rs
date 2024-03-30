@@ -1,10 +1,5 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Display, ptr, rc::Rc};
-
-use lox_parser::ast::{
-    expr::Lit,
-    ident::{Variable, IdentTarget},
-    stmt::{ClassDecl, FnDecl},
-};
+use lox_ast::{ClassDecl, FnDecl, IdentTarget, Lit, Variable};
 
 use crate::{
     environment::{Env, Environment},
@@ -245,7 +240,7 @@ impl Value {
 }
 
 impl From<Lit> for Value {
-    fn from(value: lox_parser::ast::expr::Lit) -> Self {
+    fn from(value: Lit) -> Self {
         match value {
             Lit::Number(n) => Value::Number(n),
             Lit::String(s) => Value::String(s),

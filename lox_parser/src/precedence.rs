@@ -1,4 +1,4 @@
-use crate::token::{Keyword, TokenType};
+use lox_lexer::{Keyword, TokenType};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Operator {

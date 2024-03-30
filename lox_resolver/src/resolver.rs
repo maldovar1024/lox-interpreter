@@ -1,17 +1,11 @@
-use std::{collections::HashMap, mem};
-
-use lox_parser::{
-    ast::{
-        expr::*,
-        ident::{IdentIndex, IdentTarget, Variable},
-        stmt::*,
-        visit_mut::{walk_expr, walk_stmt, VisitorMut},
-    },
-    parser::Ast,
-    span::Span,
-};
-
 use crate::error::ResolverError;
+use lox_ast::{
+    visit_mut::{walk_expr, walk_stmt, VisitorMut},
+    *,
+};
+use lox_lexer::Span;
+use lox_parser::parser::Ast;
+use std::{collections::HashMap, mem};
 
 #[derive(Clone, Copy)]
 enum VariableStatus {

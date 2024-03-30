@@ -1,17 +1,10 @@
-use std::mem;
-
 use crate::{
-    ast::{
-        expr::*,
-        ident::{Ident, Variable},
-        stmt::*,
-    },
     error::{PResult, ParserError},
-    lexer::Lexer,
     precedence::Operator,
-    span::Span,
-    token::{Keyword, Literal, Token, TokenType},
 };
+use lox_ast::*;
+use lox_lexer::{Keyword, Lexer, Literal, Span, Token, TokenType};
+use std::mem;
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,

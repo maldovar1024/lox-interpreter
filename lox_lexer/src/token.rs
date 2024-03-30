@@ -118,7 +118,7 @@ impl Display for TokenType {
 }
 
 #[derive(Debug)]
-pub(crate) struct Token {
-    pub(crate) token_type: TokenType,
-    pub(crate) span: Span,
+pub struct Token {
+    pub token_type: TokenType,
+    pub span: Span,
 }

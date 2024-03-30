@@ -1,14 +1,10 @@
-use crate::{
-    ast::{visit::Visitor, visit_mut::VisitorMut},
-    ast_enum,
-    span::{Position, Span},
-    token::{Keyword, TokenType},
-};
+use crate::{ast_enum, visit::Visitor, visit_mut::VisitorMut};
+use lox_lexer::{Keyword, Position, Span, TokenType};
 
 use super::ident::{Ident, Variable};
 
 #[inline(always)]
-pub(crate) fn p<T>(x: T) -> Box<T> {
+pub fn p<T>(x: T) -> Box<T> {
     Box::new(x)
 }
 
@@ -168,21 +164,23 @@ impl Expr {
             }) => condition.get_span().extends_with(&falsy.get_span()),
             Expr::Assign(Assign { var, value }) => var.ident.span.extends_with(&value.get_span()),
             Expr::Var(var) => var.ident.span,
-            Expr::FnCall(FnCall { callee,  end, ..}) => callee.get_span().extends_with_pos(*end),
+            Expr::FnCall(FnCall { callee, end, .. }) => callee.get_span().extends_with_pos(*end),
             Expr::Get(Get { object, field }) => object.get_span().extends_with(&field.span),
-            Expr::Set(Set { target, value }) => target.object.get_span().extends_with(&value.get_span()),
+            Expr::Set(Set { target, value }) => {
+                target.object.get_span().extends_with(&value.get_span())
+            }
             Expr::Super(Super { var, method }) => var.ident.span.extends_with(&method.span),
         }
     }
 
-    pub(crate) fn group(expr: Self, start: Position, end: Position) -> Self {
+    pub fn group(expr: Self, start: Position, end: Position) -> Self {
         Self::Group(Group {
             expr: p(expr),
             span: Span { start, end },
         })
     }
 
-    pub(crate) fn binary(operator: BinaryOp, left: Self, right: Self) -> Self {
+    pub fn binary(operator: BinaryOp, left: Self, right: Self) -> Self {
         Self::Binary(BinaryExpr {
             operator,
             left: p(left),
@@ -190,28 +188,28 @@ impl Expr {
         })
     }
 
-    pub(crate) fn assign(var: Variable, value: Expr) -> Self {
+    pub fn assign(var: Variable, value: Expr) -> Self {
         Self::Assign(Assign {
             var,
             value: p(value),
         })
     }
 
-    pub(crate) fn get(object: Self, field: Ident) -> Self {
+    pub fn get(object: Self, field: Ident) -> Self {
         Self::Get(Get {
             object: p(object),
             field,
         })
     }
 
-    pub(crate) fn set(get: Get, value: Expr) -> Self {
+    pub fn set(get: Get, value: Expr) -> Self {
         Self::Set(Set {
             target: get,
             value: p(value),
         })
     }
 
-    pub(crate) fn unary(operator: UnaryOp, op_span: Span, operand: Self) -> Self {
+    pub fn unary(operator: UnaryOp, op_span: Span, operand: Self) -> Self {
         Self::Unary(UnaryExpr {
             op_span,
             operator,
@@ -219,7 +217,7 @@ impl Expr {
         })
     }
 
-    pub(crate) fn ternary(condition: Self, truthy: Self, falsy: Self) -> Self {
+    pub fn ternary(condition: Self, truthy: Self, falsy: Self) -> Self {
         Self::Ternary(Ternary {
             condition: p(condition),
             truthy: p(truthy),
@@ -227,7 +225,7 @@ impl Expr {
         })
     }
 
-    pub(crate) fn literal(value: Lit, span: Span) -> Self {
+    pub fn literal(value: Lit, span: Span) -> Self {
         Self::Literal(Literal { span, value })
     }
 }

@@ -1,13 +1,11 @@
 use crate::{
-    ast::{
-        expr::Expr,
-        ident::{Variable, IdentIndex},
-        visit::Visitor,
-        visit_mut::VisitorMut,
-    },
     ast_enum,
-    span::Span,
+    expr::Expr,
+    ident::{IdentIndex, Variable},
+    visit::Visitor,
+    visit_mut::VisitorMut,
 };
+use lox_lexer::Span;
 
 #[derive(Debug, Clone)]
 pub struct Print {
@@ -32,7 +30,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub(crate) fn new(statements: Box<[Statement]>) -> Self {
+    pub fn new(statements: Box<[Statement]>) -> Self {
         Self {
             statements,
             num_of_locals: 0,

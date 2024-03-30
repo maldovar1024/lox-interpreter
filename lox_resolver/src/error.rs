@@ -1,4 +1,4 @@
-use lox_parser::span::Span;
+use lox_lexer::Span;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
