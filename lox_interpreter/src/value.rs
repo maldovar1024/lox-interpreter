@@ -87,18 +87,39 @@ impl Class {
                 .collect(),
         }
     }
+
+    #[inline]
+    fn get_initializer(&self) -> Option<&Function> {
+        self.methods.get("init")
+    }
 }
 
 impl Callable for Rc<Class> {
     fn arity(&self) -> u8 {
-        0
+        self.get_initializer().map(|m| m.arity()).unwrap_or(0)
     }
 
     fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Value>) -> IResult<Value> {
-        Ok(Value::Instance(Rc::new(RefCell::new(Instance {
+        let instance = Rc::new(RefCell::new(Instance {
             class: Rc::clone(self),
             fields: Default::default(),
-        }))))
+        }));
+
+        if let Some(initializer) = self.get_initializer() {
+            if let Err(e) =
+                Instance::bind_method(instance.clone(), initializer).call(interpreter, arguments)
+            {
+                if let RuntimeError::Return(span, value) = *e {
+                    if !matches!(value, Value::Nil) {
+                        return Err(RuntimeError::ReturnInConstructor(span).to_box());
+                    }
+                } else {
+                    return Err(e.to_box());
+                }
+            }
+        }
+
+        Ok(Value::Instance(instance))
     }
 }
 
