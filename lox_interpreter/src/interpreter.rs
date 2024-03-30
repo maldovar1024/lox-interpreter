@@ -279,6 +279,12 @@ impl Visitor for Interpreter {
             right,
         } = binary;
 
+        macro_rules! binary_arith {
+            ($left: expr, $op: tt, $right: expr) => {
+                (self.get_number(left)? $op self.get_number(right)?).into()
+            };
+        }
+
         Ok(match operator {
             BinaryOp::Plus => {
                 let left = walk_expr(self, left)?;
@@ -311,15 +317,15 @@ impl Visitor for Interpreter {
                     }
                 }
             }
-            BinaryOp::Minus => (self.get_number(left)? - self.get_number(right)?).into(),
-            BinaryOp::Multiply => (self.get_number(left)? * self.get_number(right)?).into(),
-            BinaryOp::Divide => (self.get_number(left)? / self.get_number(right)?).into(),
+            BinaryOp::Minus => binary_arith!(left, -, right),
+            BinaryOp::Multiply => binary_arith!(left, * ,right),
+            BinaryOp::Divide => binary_arith!(left, / ,right),
             BinaryOp::Equal => (walk_expr(self, left)? == walk_expr(self, right)?).into(),
             BinaryOp::NotEqual => (walk_expr(self, left)? != walk_expr(self, right)?).into(),
-            BinaryOp::Greater => (self.get_number(left)? > self.get_number(right)?).into(),
-            BinaryOp::GreaterEqual => (self.get_number(left)? >= self.get_number(right)?).into(),
-            BinaryOp::Less => (self.get_number(left)? < self.get_number(right)?).into(),
-            BinaryOp::LessEqual => (self.get_number(left)? <= self.get_number(right)?).into(),
+            BinaryOp::Greater => binary_arith!(left, > ,right),
+            BinaryOp::GreaterEqual => binary_arith!(left, >= ,right),
+            BinaryOp::Less => binary_arith!(left, < ,right),
+            BinaryOp::LessEqual => binary_arith!(left, <= ,right),
             BinaryOp::And | BinaryOp::Or => {
                 let left = walk_expr(self, &binary.left)?;
                 match binary.operator {
