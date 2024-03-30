@@ -63,9 +63,28 @@ impl Scope {
 }
 
 #[derive(Default)]
+enum ClassType {
+    #[default]
+    None,
+    Class,
+    SubClass,
+}
+
+#[derive(Default)]
+enum FunctionType {
+    #[default]
+    None,
+    Function,
+    Initializer,
+    Method,
+}
+
+#[derive(Default)]
 pub struct Resolver {
     scopes: Vec<Scope>,
     errors: Vec<ResolverError>,
+    class_type: ClassType,
+    function_type: FunctionType,
 }
 
 impl Resolver {
@@ -176,29 +195,50 @@ impl VisitorMut for Resolver {
 
     fn visit_function(&mut self, function: &mut FnDecl) -> Self::Result {
         self.declare(&mut function.ident, true);
+        let previous = mem::replace(&mut self.function_type, FunctionType::Function);
         self.resolve_function(function);
+        self.function_type = previous;
     }
 
     fn visit_class(&mut self, class: &mut ClassDecl) -> Self::Result {
         self.declare(&mut class.ident, true);
+        let previous_class_type = mem::replace(&mut self.class_type, ClassType::Class);
         if let Some(super_class) = &mut class.super_class {
             self.start_class_scope(super_class.span.clone(), true);
             self.get(super_class);
+            self.class_type = ClassType::SubClass;
         }
 
         self.start_class_scope(class.ident.span.clone(), false);
         for method in class.methods.iter_mut() {
+            let previous_fn_type = mem::replace(
+                &mut self.function_type,
+                if method.ident.name == "init" {
+                    FunctionType::Initializer
+                } else {
+                    FunctionType::Method
+                },
+            );
             self.resolve_function(method);
+            self.function_type = previous_fn_type;
         }
         self.end_scope();
 
         if class.super_class.is_some() {
             self.end_scope();
         }
+        self.class_type = previous_class_type;
     }
 
     fn visit_return(&mut self, return_stmt: &mut Return) -> Self::Result {
-        if let Some(expr) = &mut return_stmt.expr {
+        if matches!(self.function_type, FunctionType::None) {
+            self.errors
+                .push(ResolverError::InvalidReturn(return_stmt.span.clone()));
+        } else if let Some(expr) = &mut return_stmt.expr {
+            if matches!(self.function_type, FunctionType::Initializer) {
+                self.errors
+                    .push(ResolverError::ReturnInConstructor(return_stmt.span.clone()));
+            }
             walk_expr(self, expr);
         }
     }
@@ -213,10 +253,20 @@ impl VisitorMut for Resolver {
     fn visit_literal(&mut self, _literal: &mut Lit) -> Self::Result {}
 
     fn visit_super(&mut self, super_expr: &mut Super) -> Self::Result {
-        self.get(&mut super_expr.ident);
+        match self.class_type {
+            ClassType::SubClass => self.get(&mut super_expr.ident),
+            ClassType::Class => self.errors.push(ResolverError::NotSubClass(super_expr.ident.span.clone())),
+            ClassType::None => self
+                .errors
+                .push(ResolverError::InvalidSuper(super_expr.ident.span.clone())),
+        }
     }
 
     fn visit_var(&mut self, var: &mut Ident) -> Self::Result {
+        if var.name == "this" && matches!(self.function_type, FunctionType::None) {
+            self.errors
+                .push(ResolverError::InvalidThis(var.span.clone()));
+        }
         self.get(var);
     }
 }
