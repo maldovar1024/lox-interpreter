@@ -1,0 +1,12 @@
+[package]
+name = "lox_bytecode"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lox_ast = { path = "../lox_ast" }
+lox_lexer = { path = "../lox_lexer" }
+lox_parser = { path = "../lox_parser" }
+thiserror = "1.0.57"

@@ -8,7 +8,7 @@ pub fn p<T>(x: T) -> Box<T> {
     Box::new(x)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum BinaryOp {
     And,
     Divide,
@@ -58,7 +58,7 @@ impl BinaryExpr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum UnaryOp {
     Negative,
     Not,
