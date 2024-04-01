@@ -51,6 +51,13 @@ pub struct BinaryExpr {
     pub right: Box<Expr>,
 }
 
+impl BinaryExpr {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.left.get_span().extends_with(&self.right.get_span())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum UnaryOp {
     Negative,
@@ -74,6 +81,13 @@ pub struct UnaryExpr {
     pub operand: Box<Expr>,
 }
 
+impl UnaryExpr {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.op_span.extends_with(&self.operand.get_span())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Ternary {
     pub condition: Box<Expr>,
@@ -81,10 +95,26 @@ pub struct Ternary {
     pub falsy: Box<Expr>,
 }
 
+impl Ternary {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.condition
+            .get_span()
+            .extends_with(&self.falsy.get_span())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Group {
     pub span: Span,
     pub expr: Box<Expr>,
+}
+
+impl Group {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -101,11 +131,25 @@ pub struct Literal {
     pub value: Lit,
 }
 
+impl Literal {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FnCall {
     pub callee: Box<Expr>,
     pub arguments: Box<[Expr]>,
     pub end: Position,
+}
+
+impl FnCall {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.callee.get_span().extends_with_pos(self.end)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -114,10 +158,24 @@ pub struct Assign {
     pub value: Box<Expr>,
 }
 
+impl Assign {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.var.ident.span.extends_with(&self.value.get_span())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Get {
     pub object: Box<Expr>,
     pub field: Ident,
+}
+
+impl Get {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.object.get_span().extends_with(&self.field.span)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -126,13 +184,48 @@ pub struct Set {
     pub value: Box<Expr>,
 }
 
+impl Set {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.target
+            .object
+            .get_span()
+            .extends_with(&self.value.get_span())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Super {
     pub var: Variable,
     pub method: Ident,
 }
 
-ast_enum! {
+impl Super {
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.var.ident.span.extends_with(&self.method.span)
+    }
+}
+
+macro_rules! expr {
+    (pub enum $enum_name: ident {$($walker: ident: $name: ident($ty: ty)),+ $(,)?}) => {
+        ast_enum! {
+            pub enum $enum_name {
+                $($walker: $name($ty),)+
+            }
+        }
+
+        impl $enum_name {
+            pub fn get_span(&self) -> Span {
+                match self {
+                    $(Self::$name(variant) => variant.get_span()),+
+                }
+            }
+        }
+    };
+}
+
+expr! {
     pub enum Expr {
         visit_binary: Binary(BinaryExpr),
         visit_unary: Unary(UnaryExpr),
@@ -149,30 +242,6 @@ ast_enum! {
 }
 
 impl Expr {
-    pub fn get_span(&self) -> Span {
-        match self {
-            Expr::Binary(BinaryExpr { left, right, .. }) => {
-                left.get_span().extends_with(&right.get_span())
-            }
-            Expr::Unary(UnaryExpr {
-                op_span, operand, ..
-            }) => op_span.extends_with(&operand.get_span()),
-            Expr::Group(group) => group.span,
-            Expr::Literal(literal) => literal.span,
-            Expr::Ternary(Ternary {
-                condition, falsy, ..
-            }) => condition.get_span().extends_with(&falsy.get_span()),
-            Expr::Assign(Assign { var, value }) => var.ident.span.extends_with(&value.get_span()),
-            Expr::Var(var) => var.ident.span,
-            Expr::FnCall(FnCall { callee, end, .. }) => callee.get_span().extends_with_pos(*end),
-            Expr::Get(Get { object, field }) => object.get_span().extends_with(&field.span),
-            Expr::Set(Set { target, value }) => {
-                target.object.get_span().extends_with(&value.get_span())
-            }
-            Expr::Super(Super { var, method }) => var.ident.span.extends_with(&method.span),
-        }
-    }
-
     pub fn group(expr: Self, start: Position, end: Position) -> Self {
         Self::Group(Group {
             expr: p(expr),

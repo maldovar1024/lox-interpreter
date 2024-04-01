@@ -49,4 +49,9 @@ impl Variable {
     pub fn from_name(name: String, span: Span) -> Self {
         Ident::from_name(name, span).into()
     }
+
+    #[inline]
+    pub fn get_span(&self) -> Span {
+        self.ident.span
+    }
 }
