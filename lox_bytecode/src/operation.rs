@@ -1,7 +1,10 @@
 use lox_ast::{BinaryOp, UnaryOp};
 
 pub enum Operation {
-    Constant(u8),
+    LoadNumber(f64),
+    LoadString(u8),
+    LoadBool(bool),
+    LoadNil,
     Negative,
     Not,
     Plus,
