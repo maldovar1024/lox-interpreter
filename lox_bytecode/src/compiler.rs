@@ -4,6 +4,7 @@ use lox_ast::{
     *,
 };
 use lox_lexer::Span;
+use lox_parser::parser::Ast;
 
 #[derive(Debug, Default)]
 pub struct Compiler {
@@ -13,6 +14,12 @@ pub struct Compiler {
 }
 
 impl Compiler {
+    pub fn compile(&mut self, ast: &Ast) {
+        for stmt in ast {
+            self.visit_stmt(stmt);
+        }
+    }
+
     pub fn get_span_at(&self, index: usize) -> Span {
         self.spans[index]
     }

@@ -1,0 +1,11 @@
+[package]
+name = "lox_vm_cli"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lox_bytecode = { path = "../lox_bytecode" }
+lox_parser = { path = "../lox_parser" }
+lox_resolver = { path = "../lox_resolver" }
