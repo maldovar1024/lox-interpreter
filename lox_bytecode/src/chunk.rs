@@ -1,10 +1,12 @@
-use crate::operation::Operation;
+use crate::{operation::Operation, string::StringIntern};
 use lox_ast::{Lit, Literal};
 use lox_lexer::Span;
 
+#[derive(Debug, Default)]
 pub struct Chunk {
     operations: Vec<Operation>,
     spans: Vec<Span>,
+    strings: StringIntern,
 }
 
 impl Chunk {
@@ -17,15 +19,13 @@ impl Chunk {
     }
 
     pub(crate) fn add_constant(&mut self, literal: &Literal) {
-        self.add_operation(
-            match &literal.value {
-                Lit::Number(n) => Operation::LoadNumber(*n),
-                Lit::String(_) => todo!(),
-                Lit::Bool(b) => Operation::LoadBool(*b),
-                Lit::Nil => Operation::LoadNil,
-            },
-            literal.span,
-        );
+        let operation = match &literal.value {
+            Lit::Number(n) => Operation::LoadNumber(*n),
+            Lit::String(s) => Operation::LoadString(self.strings.intern(s)),
+            Lit::Bool(b) => Operation::LoadBool(*b),
+            Lit::Nil => Operation::LoadNil,
+        };
+        self.add_operation(operation, literal.span);
     }
 
     pub(crate) fn add_operation(&mut self, operation: Operation, span: Span) {

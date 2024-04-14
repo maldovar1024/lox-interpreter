@@ -1,8 +1,11 @@
 use lox_ast::{BinaryOp, UnaryOp};
 
+use crate::string::StringSymbol;
+
+#[derive(Debug)]
 pub enum Operation {
     LoadNumber(f64),
-    LoadString(u8),
+    LoadString(StringSymbol),
     LoadBool(bool),
     LoadNil,
     Negative,
