@@ -1,19 +1,35 @@
-use crate::{chunk::Chunk, operation::Operation};
+use crate::{operation::Operation, string::StringIntern};
 use lox_ast::{
     visit::{walk_binary, walk_unary, Visitor},
     *,
 };
 use lox_lexer::Span;
 
+#[derive(Debug, Default)]
 pub struct Compiler {
-    chunk: Chunk,
+    operations: Vec<Operation>,
+    spans: Vec<Span>,
+    strings: StringIntern,
 }
 
-
 impl Compiler {
-    #[inline(always)]
+    pub fn get_span_at(&self, index: usize) -> Span {
+        self.spans[index]
+    }
+
+    fn add_constant(&mut self, literal: &Literal) {
+        let operation = match &literal.value {
+            Lit::Number(n) => Operation::LoadNumber(*n),
+            Lit::String(s) => Operation::LoadString(self.strings.intern(s)),
+            Lit::Bool(b) => Operation::LoadBool(*b),
+            Lit::Nil => Operation::LoadNil,
+        };
+        self.add_operation(operation, literal.span);
+    }
+
     fn add_operation(&mut self, operation: Operation, span: Span) {
-        self.chunk.add_operation(operation, span);
+        self.operations.push(operation);
+        self.spans.push(span);
     }
 }
 
@@ -68,7 +84,7 @@ impl Visitor for Compiler {
     }
 
     fn visit_literal(&mut self, literal: &Literal) -> Self::Result {
-        self.chunk.add_constant(literal);
+        self.add_constant(literal);
     }
 
     fn visit_var(&mut self, var: &Variable) -> Self::Result {
