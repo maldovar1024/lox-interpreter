@@ -1,8 +1,8 @@
-use crate::{operation::Operation, string::StringIntern};
 use lox_ast::{
     visit::{walk_binary, walk_unary, Visitor},
     *,
 };
+use lox_bytecode_ops::{Operation, StringIntern};
 use lox_lexer::Span;
 use lox_parser::parser::Ast;
 

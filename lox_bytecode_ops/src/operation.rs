@@ -1,6 +1,6 @@
 use lox_ast::{BinaryOp, UnaryOp};
 
-use crate::string::StringSymbol;
+use crate::StringSymbol;
 
 #[derive(Debug)]
 pub enum Operation {
