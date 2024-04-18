@@ -1,3 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["lox_parser", "lox_interpreter", "lox_interpreter_cli", "lox_resolver", "lox_lexer", "lox_ast", "lox_bytecode", "lox_vm_cli", "lox_bytecode_ops"]
+members = [
+    "lox_ast",
+    "lox_bytecode_ops",
+    "lox_bytecode",
+    "lox_interpreter_cli",
+    "lox_interpreter",
+    "lox_lexer",
+    "lox_macros",
+    "lox_parser",
+    "lox_resolver",
+    "lox_vm_cli",
+]
