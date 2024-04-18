@@ -1,5 +1,7 @@
+use crate::codec::{Encode, Write};
+
 #[derive(Debug)]
-pub struct StringSymbol(u32);
+pub struct StringSymbol(pub(crate) u32);
 
 impl From<StringSymbol> for u32 {
     #[inline(always)]
@@ -19,5 +21,11 @@ impl StringIntern {
             Some(idx) => idx,
             None => self.strings.insert_full(s.to_string().into_boxed_str()).0,
         } as u32)
+    }
+}
+
+impl<Writer: Write> Encode<Writer> for StringSymbol {
+    fn encode(&self, writer: &mut Writer) {
+        writer.write(&self.0.to_le_bytes());
     }
 }

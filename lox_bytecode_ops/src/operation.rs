@@ -1,8 +1,9 @@
 use lox_ast::{BinaryOp, UnaryOp};
+use lox_macros::OpCodec;
 
-use crate::StringSymbol;
+use crate::{codec::*, StringSymbol};
 
-#[derive(Debug)]
+#[derive(Debug, OpCodec)]
 pub enum Operation {
     LoadNumber(f64),
     LoadString(StringSymbol),

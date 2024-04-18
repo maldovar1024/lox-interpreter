@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 indexmap = "2.2.6"
 lox_ast = { path = "../lox_ast" }
+lox_macros = { path = "../lox_macros" }
