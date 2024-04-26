@@ -1,4 +1,5 @@
 pub mod codec;
+pub mod error;
 mod operation;
 mod string;
 #[cfg(test)]

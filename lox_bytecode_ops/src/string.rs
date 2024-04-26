@@ -1,4 +1,4 @@
-use crate::codec::{Encode, Write};
+use crate::codec::{Decode, DecodeResult, Encode, Write};
 
 #[derive(Debug)]
 pub struct StringSymbol(pub(crate) u32);
@@ -27,5 +27,12 @@ impl StringIntern {
 impl<Writer: Write> Encode<Writer> for StringSymbol {
     fn encode(&self, writer: &mut Writer) {
         writer.write(&self.0.to_le_bytes());
+    }
+}
+
+impl Decode for StringSymbol {
+    fn decode(buf: &[u8]) -> DecodeResult<Self> {
+        let (v, size) = u32::decode(buf)?;
+        Ok((Self(v), size))
     }
 }

@@ -1,7 +1,7 @@
 use lox_ast::{BinaryOp, UnaryOp};
 use lox_macros::OpCodec;
 
-use crate::{codec::*, StringSymbol};
+use crate::{codec::*, error::*, StringSymbol};
 
 #[derive(Debug, OpCodec)]
 pub enum Operation {
