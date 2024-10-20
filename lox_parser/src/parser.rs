@@ -17,7 +17,7 @@ macro_rules! eat {
         let next_token = $self.next_token();
         match next_token.token_type {
             $token_type => next_token.span,
-            t => return Err(p(ParserError::UnexpectedToken(t, next_token.span))),
+            t => return Err(Box::new(ParserError::UnexpectedToken(t, next_token.span))),
         }
     }};
 }
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
             TokenType::Keyword(Keyword::Var) => self.var_decl(),
             TokenType::Keyword(Keyword::Fun) => {
                 self.next_token();
-                Ok(Statement::FnDecl(self.function()?))
+                Ok(Statement::FnDecl(Box::new(self.function()?)))
             }
             TokenType::Keyword(Keyword::Class) => self.class(),
             _ => self.statement(),
@@ -144,10 +144,10 @@ impl<'a> Parser<'a> {
 
         eat!(self, TokenType::Semicolon);
 
-        Ok(Statement::Var(VarDecl {
+        Ok(Statement::Var(Box::new(VarDecl {
             var: Variable::from_name(name, next_token.span),
             initializer,
-        }))
+        })))
     }
 
     fn function(&mut self) -> PResult<FnDecl> {
@@ -200,17 +200,17 @@ impl<'a> Parser<'a> {
         }
         eat!(self, TokenType::RightBrace);
 
-        Ok(Statement::ClassDecl(ClassDecl {
+        Ok(Statement::ClassDecl(Box::new(ClassDecl {
             var: ident.into(),
             super_class: super_class.map(From::from),
             methods: methods.into_boxed_slice(),
-        }))
+        })))
     }
 
     fn statement(&mut self) -> PResult<Statement> {
         match self.look_ahead() {
             TokenType::Keyword(Keyword::Print) => self.print_statement(),
-            TokenType::LeftBrace => Ok(Statement::Block(Block::new(self.block()?))),
+            TokenType::LeftBrace => Ok(Statement::Block(Box::new(Block::new(self.block()?)))),
             TokenType::Keyword(Keyword::If) => self.if_statement(),
             TokenType::Keyword(Keyword::While) => self.while_statement(),
             TokenType::Keyword(Keyword::For) => self.for_statement(),
@@ -233,17 +233,17 @@ impl<'a> Parser<'a> {
         eat!(self, TokenType::LeftParen);
         let condition = self.expression()?;
         eat!(self, TokenType::RightParen);
-        let then_branch = Box::new(self.statement()?);
+        let then_branch = self.statement()?;
         let else_branch = if match_keyword!(self, Keyword::Else) {
-            Some(Box::new(self.statement()?))
+            Some(self.statement()?)
         } else {
             None
         };
-        Ok(Statement::If(If {
+        Ok(Statement::If(Box::new(If {
             condition,
             then_branch,
             else_branch,
-        }))
+        })))
     }
 
     fn while_statement(&mut self) -> PResult<Statement> {
@@ -251,8 +251,8 @@ impl<'a> Parser<'a> {
         eat!(self, TokenType::LeftParen);
         let condition = self.expression()?;
         eat!(self, TokenType::RightParen);
-        let body = Box::new(self.statement()?);
-        Ok(Statement::While(While { condition, body }))
+        let body = self.statement()?;
+        Ok(Statement::While(Box::new(While { condition, body })))
     }
 
     fn for_statement(&mut self) -> PResult<Statement> {
@@ -280,18 +280,20 @@ impl<'a> Parser<'a> {
 
         let body = self.statement()?;
 
-        let inner = Statement::While(While {
+        let inner = Statement::While(Box::new(While {
             condition: condition.unwrap_or(Expr::literal(Lit::Bool(true), Span::dummy())),
             body: match increment {
-                Some(increment) => Box::new(Statement::Block(Block::new(
+                Some(increment) => Statement::Block(Box::new(Block::new(
                     [body, Statement::Expression(Expression { expr: increment })].into(),
                 ))),
-                None => Box::new(body),
+                None => body,
             },
-        });
+        }));
 
         Ok(match initializer {
-            Some(initializer) => Statement::Block(Block::new([initializer, inner].into())),
+            Some(initializer) => {
+                Statement::Block(Box::new(Block::new([initializer, inner].into())))
+            }
             None => inner,
         })
     }
@@ -306,10 +308,10 @@ impl<'a> Parser<'a> {
 
         eat!(self, TokenType::Semicolon);
 
-        Ok(Statement::Return(Return {
+        Ok(Statement::Return(Box::new(Return {
             span: token.span,
             expr,
-        }))
+        })))
     }
 
     fn expression_statement(&mut self) -> PResult<Statement> {
@@ -350,16 +352,17 @@ impl<'a> Parser<'a> {
                 Keyword::False => Expr::literal(Lit::Bool(false), next_token.span),
                 Keyword::True => Expr::literal(Lit::Bool(true), next_token.span),
                 Keyword::Nil => Expr::literal(Lit::Nil, next_token.span),
-                Keyword::This => {
-                    Expr::Var(Variable::from_name("this".to_string(), next_token.span))
-                }
-                Keyword::Super => Expr::Super(Super {
+                Keyword::This => Expr::Var(Box::new(Variable::from_name(
+                    "this".to_string(),
+                    next_token.span,
+                ))),
+                Keyword::Super => Expr::Super(Box::new(Super {
                     var: Variable::from_name("super".to_string(), next_token.span),
                     method: {
                         eat!(self, TokenType::Dot);
                         self.get_identifier()?
                     },
-                }),
+                })),
                 kw => {
                     return Err(Box::new(ParserError::UnexpectedToken(
                         TokenType::Keyword(kw),
@@ -384,9 +387,11 @@ impl<'a> Parser<'a> {
                 next_token.span,
                 self.expr_precedence(Operator::Prefix)?,
             ),
-            TokenType::Identifier(name) => Expr::Var(Variable::from_name(name, next_token.span)),
+            TokenType::Identifier(name) => {
+                Expr::Var(Box::new(Variable::from_name(name, next_token.span)))
+            }
             t => {
-                return Err(p(ParserError::ExpectStructure {
+                return Err(Box::new(ParserError::ExpectStructure {
                     expected: "expression",
                     found: t,
                     span: next_token.span,
@@ -405,8 +410,10 @@ impl<'a> Parser<'a> {
                             Expr::ternary(expr, truthy, self.expr_precedence(next_op)?)
                         }
                         Operator::Assign => match expr {
-                            Expr::Var(ident) => Expr::assign(ident, self.expr_precedence(next_op)?),
-                            Expr::Get(get) => Expr::set(get, self.expr_precedence(next_op)?),
+                            Expr::Var(ident) => {
+                                Expr::assign(*ident, self.expr_precedence(next_op)?)
+                            }
+                            Expr::Get(get) => Expr::set(*get, self.expr_precedence(next_op)?),
                             _ => {
                                 return Err(Box::new(ParserError::InvalidLeftValue(
                                     expr.get_span(),
@@ -445,10 +452,10 @@ impl<'a> Parser<'a> {
         }
 
         let Span { end, .. } = eat!(self, TokenType::RightParen);
-        Ok(Expr::FnCall(FnCall {
-            callee: Box::new(callee),
+        Ok(Expr::FnCall(Box::new(FnCall {
+            callee,
             arguments: arguments.into_boxed_slice(),
             end,
-        }))
+        })))
     }
 }

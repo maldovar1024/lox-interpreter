@@ -3,11 +3,6 @@ use lox_lexer::{Keyword, Position, Span, TokenType};
 
 use super::ident::{Ident, Variable};
 
-#[inline(always)]
-pub fn p<T>(x: T) -> Box<T> {
-    Box::new(x)
-}
-
 #[derive(Debug, Clone)]
 pub enum BinaryOp {
     And,
@@ -47,8 +42,8 @@ impl From<TokenType> for BinaryOp {
 #[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub operator: BinaryOp,
-    pub left: Box<Expr>,
-    pub right: Box<Expr>,
+    pub left: Expr,
+    pub right: Expr,
 }
 
 #[derive(Debug, Clone)]
@@ -71,20 +66,20 @@ impl From<TokenType> for UnaryOp {
 pub struct UnaryExpr {
     pub op_span: Span,
     pub operator: UnaryOp,
-    pub operand: Box<Expr>,
+    pub operand: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct Ternary {
-    pub condition: Box<Expr>,
-    pub truthy: Box<Expr>,
-    pub falsy: Box<Expr>,
+    pub condition: Expr,
+    pub truthy: Expr,
+    pub falsy: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct Group {
     pub span: Span,
-    pub expr: Box<Expr>,
+    pub expr: Expr,
 }
 
 #[derive(Debug, Clone)]
@@ -103,7 +98,7 @@ pub struct Literal {
 
 #[derive(Debug, Clone)]
 pub struct FnCall {
-    pub callee: Box<Expr>,
+    pub callee: Expr,
     pub arguments: Box<[Expr]>,
     pub end: Position,
 }
@@ -111,19 +106,19 @@ pub struct FnCall {
 #[derive(Debug, Clone)]
 pub struct Assign {
     pub var: Variable,
-    pub value: Box<Expr>,
+    pub value: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct Get {
-    pub object: Box<Expr>,
+    pub object: Expr,
     pub field: Ident,
 }
 
 #[derive(Debug, Clone)]
 pub struct Set {
     pub target: Get,
-    pub value: Box<Expr>,
+    pub value: Expr,
 }
 
 #[derive(Debug, Clone)]
@@ -134,98 +129,94 @@ pub struct Super {
 
 ast_enum! {
     pub enum Expr {
-        visit_binary: Binary(BinaryExpr),
-        visit_unary: Unary(UnaryExpr),
-        visit_group: Group(Group),
-        visit_literal: Literal(Literal),
-        visit_ternary: Ternary(Ternary),
-        visit_assign: Assign(Assign),
-        visit_var: Var(Variable),
-        visit_fn_call: FnCall(FnCall),
-        visit_get: Get(Get),
-        visit_set: Set(Set),
-        visit_super: Super(Super),
+        visit_binary: Binary(Box<BinaryExpr>),
+        visit_unary: Unary(Box<UnaryExpr>),
+        visit_group: Group(Box<Group>),
+        visit_literal: Literal(Box<Literal>),
+        visit_ternary: Ternary(Box<Ternary>),
+        visit_assign: Assign(Box<Assign>),
+        visit_var: Var(Box<Variable>),
+        visit_fn_call: FnCall(Box<FnCall>),
+        visit_get: Get(Box<Get>),
+        visit_set: Set(Box<Set>),
+        visit_super: Super(Box<Super>),
     }
 }
 
 impl Expr {
     pub fn get_span(&self) -> Span {
         match self {
-            Expr::Binary(BinaryExpr { left, right, .. }) => {
-                left.get_span().extends_with(&right.get_span())
-            }
-            Expr::Unary(UnaryExpr {
-                op_span, operand, ..
-            }) => op_span.extends_with(&operand.get_span()),
+            Expr::Binary(binary) => binary
+                .left
+                .get_span()
+                .extends_with(&binary.right.get_span()),
+            Expr::Unary(unary) => unary.op_span.extends_with(&unary.operand.get_span()),
             Expr::Group(group) => group.span,
             Expr::Literal(literal) => literal.span,
-            Expr::Ternary(Ternary {
-                condition, falsy, ..
-            }) => condition.get_span().extends_with(&falsy.get_span()),
-            Expr::Assign(Assign { var, value }) => var.ident.span.extends_with(&value.get_span()),
+            Expr::Ternary(ternary) => ternary
+                .condition
+                .get_span()
+                .extends_with(&ternary.falsy.get_span()),
+            Expr::Assign(assign) => assign.var.ident.span.extends_with(&assign.value.get_span()),
             Expr::Var(var) => var.ident.span,
-            Expr::FnCall(FnCall { callee, end, .. }) => callee.get_span().extends_with_pos(*end),
-            Expr::Get(Get { object, field }) => object.get_span().extends_with(&field.span),
-            Expr::Set(Set { target, value }) => {
-                target.object.get_span().extends_with(&value.get_span())
-            }
-            Expr::Super(Super { var, method }) => var.ident.span.extends_with(&method.span),
+            Expr::FnCall(fn_call) => fn_call.callee.get_span().extends_with_pos(fn_call.end),
+            Expr::Get(get) => get.object.get_span().extends_with(&get.field.span),
+            Expr::Set(set) => set
+                .target
+                .object
+                .get_span()
+                .extends_with(&set.value.get_span()),
+            Expr::Super(su) => su.var.ident.span.extends_with(&su.method.span),
         }
     }
 
     pub fn group(expr: Self, start: Position, end: Position) -> Self {
-        Self::Group(Group {
-            expr: p(expr),
+        Self::Group(Box::new(Group {
+            expr,
             span: Span { start, end },
-        })
+        }))
     }
 
     pub fn binary(operator: BinaryOp, left: Self, right: Self) -> Self {
-        Self::Binary(BinaryExpr {
+        Self::Binary(Box::new(BinaryExpr {
             operator,
-            left: p(left),
-            right: p(right),
-        })
+            left,
+            right,
+        }))
     }
 
     pub fn assign(var: Variable, value: Expr) -> Self {
-        Self::Assign(Assign {
-            var,
-            value: p(value),
-        })
+        Self::Assign(Box::new(Assign { var, value }))
     }
 
     pub fn get(object: Self, field: Ident) -> Self {
-        Self::Get(Get {
-            object: p(object),
-            field,
-        })
+        Self::Get(Box::new(Get { object, field }))
     }
 
     pub fn set(get: Get, value: Expr) -> Self {
-        Self::Set(Set {
+        Self::Set(Box::new(Set {
             target: get,
-            value: p(value),
-        })
+            value,
+        }))
     }
 
     pub fn unary(operator: UnaryOp, op_span: Span, operand: Self) -> Self {
-        Self::Unary(UnaryExpr {
+        Self::Unary(Box::new(UnaryExpr {
             op_span,
             operator,
-            operand: p(operand),
-        })
+            operand,
+        }))
     }
 
     pub fn ternary(condition: Self, truthy: Self, falsy: Self) -> Self {
-        Self::Ternary(Ternary {
-            condition: p(condition),
-            truthy: p(truthy),
-            falsy: p(falsy),
-        })
+        Self::Ternary(Box::new(Ternary {
+            condition,
+            truthy,
+            falsy,
+        }))
     }
 
     pub fn literal(value: Lit, span: Span) -> Self {
-        Self::Literal(Literal { span, value })
+        Self::Literal(Box::new(Literal { span, value }))
     }
 }

@@ -10,7 +10,7 @@ fn run(src: &str) {
         Ok(mut ast) => match Resolver::default().resolve(&mut ast) {
             Some(errors) => errors.iter().for_each(|e| eprintln!("{e}")),
             None => {
-                println!("{ast:?}");
+                // println!("{ast:?}");
                 if let Err(err) = interpret(&ast) {
                     println!("{err}");
                 }

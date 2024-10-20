@@ -41,14 +41,14 @@ impl Block {
 #[derive(Debug, Clone)]
 pub struct If {
     pub condition: Expr,
-    pub then_branch: Box<Statement>,
-    pub else_branch: Option<Box<Statement>>,
+    pub then_branch: Statement,
+    pub else_branch: Option<Statement>,
 }
 
 #[derive(Debug, Clone)]
 pub struct While {
     pub condition: Expr,
-    pub body: Box<Statement>,
+    pub body: Statement,
 }
 
 #[derive(Debug, Clone)]
@@ -76,12 +76,12 @@ ast_enum! {
     pub enum Statement {
         visit_print: Print(Print),
         visit_expression: Expression(Expression),
-        visit_var_decl: Var(VarDecl),
-        visit_block: Block(Block),
-        visit_if: If(If),
-        visit_while: While(While),
-        visit_function: FnDecl(FnDecl),
-        visit_return: Return(Return),
-        visit_class: ClassDecl(ClassDecl),
+        visit_var_decl: Var(Box<VarDecl>),
+        visit_block: Block(Box<Block>),
+        visit_if: If(Box<If>),
+        visit_while: While(Box<While>),
+        visit_function: FnDecl(Box<FnDecl>),
+        visit_return: Return(Box<Return>),
+        visit_class: ClassDecl(Box<ClassDecl>),
     }
 }
