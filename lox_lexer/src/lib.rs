@@ -29,7 +29,6 @@ fn is_digit(c: char) -> bool {
 pub struct Lexer<'a> {
     chars: Chars<'a>,
     src: &'a str,
-    current_position: Position,
     byte_pos: usize,
 }
 
@@ -38,7 +37,6 @@ impl<'a> Lexer<'a> {
         Self {
             src,
             chars: src.chars(),
-            current_position: Position { line: 1, column: 1 },
             byte_pos: 0,
         }
     }
@@ -49,7 +47,7 @@ impl<'a> Lexer<'a> {
         }
 
         self.update_byte_pos();
-        let start = self.current_position;
+        let start = self.byte_pos as u32;
 
         let first_char = match self.bump() {
             Some(c) => c,
@@ -107,12 +105,12 @@ impl<'a> Lexer<'a> {
         self.yield_token(token_type, start)
     }
 
-    fn yield_token(&self, token_type: TokenType, start: Position) -> Token {
+    fn yield_token(&self, token_type: TokenType, start: u32) -> Token {
         Token {
             token_type,
             span: Span {
                 start,
-                end: self.current_position,
+                end: self.byte_pos as u32,
             },
         }
     }
@@ -135,23 +133,8 @@ impl<'a> Lexer<'a> {
         self.byte_pos = self.src.len() - self.chars.as_str().len();
     }
 
-    fn new_line(&mut self) {
-        self.current_position.line += 1;
-        self.current_position.column = 1;
-    }
-
     fn bump(&mut self) -> Option<char> {
-        let mut next = self.chars.next()?;
-        match next {
-            '\n' => self.new_line(),
-            '\r' if self.peek() == '\n' => {
-                self.chars.next();
-                self.new_line();
-                next = '\n'
-            }
-            _ => self.current_position.column += 1,
-        }
-        Some(next)
+        self.chars.next()
     }
 
     fn test_and_bump(&mut self, c: char) -> bool {
@@ -188,7 +171,7 @@ impl<'a> Lexer<'a> {
 
     fn skip_multiline_comment(&mut self) -> Option<Token> {
         let mut level = 1;
-        let start = self.current_position;
+        let start = self.byte_pos as u32;
 
         self.bump();
         self.bump();

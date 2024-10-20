@@ -1,5 +1,5 @@
 use crate::{ast_enum, visit::Visitor, visit_mut::VisitorMut};
-use lox_lexer::{Keyword, Position, Span, TokenType};
+use lox_lexer::{Keyword, Span, TokenType};
 
 use super::ident::{Ident, Variable};
 
@@ -100,7 +100,7 @@ pub struct Literal {
 pub struct FnCall {
     pub callee: Expr,
     pub arguments: Box<[Expr]>,
-    pub end: Position,
+    pub end: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -170,7 +170,7 @@ impl Expr {
         }
     }
 
-    pub fn group(expr: Self, start: Position, end: Position) -> Self {
+    pub fn group(expr: Self, start: u32, end: u32) -> Self {
         Self::Group(Box::new(Group {
             expr,
             span: Span { start, end },
